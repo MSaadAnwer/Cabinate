@@ -1,0 +1,52 @@
+# =========================
+# Operating System Files
+# =========================
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# =========================
+# IDEs and Editors
+# =========================
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# =========================
+# Frontend: Node & React
+# =========================
+node_modules/
+build/
+dist/
+.env
+.env.local
+npm-debug.log
+yarn-error.log
+
+# =========================
+# Backend: Java & Spring Boot
+# =========================
+target/
+*.class
+*.jar
+*.war
+*.ear
+# Keep Maven wrapper if generated
+!/.mvn/wrapper/maven-wrapper.jar
+
+# =========================
+# Data Pipeline: Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# =========================
+# Infrastructure / Misc
+# =========================
+*.log
