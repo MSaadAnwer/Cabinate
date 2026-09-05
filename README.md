@@ -1,2 +1,3 @@
-# Cookt
-Lil practice proj
+# Cabinate
+
+Intelligent Pantry & Nutrition Architect
