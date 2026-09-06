@@ -11,13 +11,13 @@
 - [x] Validate project compiles and boots locally
 
 ## Milestone 1: Operational Backend & Ingestion API (Spring Boot + MongoDB)
-- [ ] Design domain models: `Recipe`, `PantryItem`, `RawIngestPayload`
-- [ ] Implement N-Tier Architecture (Package-by-Feature):
+- [x] Design domain models: `Recipe`, `PantryItem`, `RawIngestPayload`
+- [x] Implement N-Tier Architecture (Package-by-Feature):
   - Repository layer (`MongoRepository`)
   - Service layer (business rules, validation)
   - Controller layer (REST endpoints, DTO mapping)
-- [ ] Write integration and unit tests (MockMvc, Testcontainers or embedded Mongo)
-- [ ] Create seed data generation script for testing raw recipe payloads
+- [x] Write integration and unit tests (MockMvc, Testcontainers or embedded Mongo)
+- [x] Create seed data generation script for testing raw recipe payloads
 
 ## Milestone 2: Modern Frontend (React + TypeScript)
 - [ ] Scaffold Vite + React + TypeScript application
