@@ -136,13 +136,13 @@ class PantryItemServiceTest {
     @Test
     void getExpiringItems_ShouldQueryRepositoryWithDate() {
         LocalDate date = LocalDate.now().plusDays(3);
-        when(pantryItemRepository.findByExpirationDateBeforeOrderByExpirationDateAsc(date))
+        when(pantryItemRepository.findByExpirationDateLessThanEqualOrderByExpirationDateAsc(date))
                 .thenReturn(List.of(sampleItem));
 
         List<PantryItemResponse> expiring = pantryItemService.getExpiringItems(date);
 
         assertThat(expiring).hasSize(1);
-        verify(pantryItemRepository).findByExpirationDateBeforeOrderByExpirationDateAsc(date);
+        verify(pantryItemRepository).findByExpirationDateLessThanEqualOrderByExpirationDateAsc(date);
     }
 
     @Test

@@ -4,8 +4,8 @@ server:
 spring:
   application:
     name: cabinate-api
+  mongodb:
+    uri: ${SPRING_MONGODB_URI:${SPRING_DATA_MONGODB_URI:mongodb://admin:password123@localhost:27017/cabinate?authSource=admin}}
   data:
     mongodb:
-      # Format: mongodb://[username:password@]host[:port]/[database][?options]
-      uri: mongodb://admin:password123@localhost:27017/cabinate?authSource=admin
       auto-index-creation: true

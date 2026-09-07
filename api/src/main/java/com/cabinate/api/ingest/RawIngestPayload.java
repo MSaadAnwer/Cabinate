@@ -3,6 +3,7 @@ package com.cabinate.api.ingest;
 import java.time.Instant;
 import java.util.Map;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,11 +20,15 @@ public class RawIngestPayload {
     @Id
     private String id;
 
+    @Indexed
     private String source;
+
     private String sourceUrl;
     private String contentType;
     private String payload;
     private Map<String, Object> metadata;
+
+    @Indexed
     private String status;
 
     private Instant createdAt;

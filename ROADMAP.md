@@ -20,12 +20,12 @@
 - [x] Create seed data generation script for testing raw recipe payloads
 
 ## Milestone 2: Modern Frontend (React + TypeScript)
-- [ ] Scaffold Vite + React + TypeScript application
-- [ ] Build core UI components:
+- [x] Scaffold Vite + React + TypeScript application
+- [x] Build core UI components:
   - Pantry inventory dashboard
   - Recipe submission / ingestion form
   - Raw JSON / text paste view
-- [ ] Integrate React client with Spring Boot API endpoints
+- [x] Integrate React client with Spring Boot API endpoints
 
 ## Milestone 3: Data Lakehouse & ETL Pipeline (Databricks + Python)
 - [ ] Set up Snowflake trial account, database, schemas (`RAW`, `STAGING`, `ANALYTICS`), and warehouse

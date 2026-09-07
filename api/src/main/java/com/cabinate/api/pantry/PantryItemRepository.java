@@ -14,5 +14,5 @@ public interface PantryItemRepository extends MongoRepository<PantryItem, String
 
     List<PantryItem> findByCategoryIgnoreCaseAndNameContainingIgnoreCase(String category, String name);
 
-    List<PantryItem> findByExpirationDateBeforeOrderByExpirationDateAsc(LocalDate date);
+    List<PantryItem> findByExpirationDateLessThanEqualOrderByExpirationDateAsc(LocalDate date);
 }

@@ -195,4 +195,22 @@ class PantryItemControllerTest {
         mockMvc.perform(delete("/api/v1/pantry/missing"))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    void createItem_WhenMalformedJson_ShouldReturn400BadRequest() throws Exception {
+        String malformedJson = "{ name: not valid json }";
+
+        mockMvc.perform(post("/api/v1/pantry")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(malformedJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Malformed JSON request")));
+    }
+
+    @Test
+    void getExpiringItems_WhenInvalidDateFormat_ShouldReturn400BadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/pantry/expiring?before=invalid-date"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Parameter 'before' should be of type 'LocalDate'"));
+    }
 }

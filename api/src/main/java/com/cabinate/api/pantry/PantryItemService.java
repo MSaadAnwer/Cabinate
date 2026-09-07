@@ -62,7 +62,7 @@ public class PantryItemService {
 
     public List<PantryItemResponse> getExpiringItems(LocalDate beforeDate) {
         LocalDate threshold = (beforeDate != null) ? beforeDate : LocalDate.now().plusDays(7);
-        return pantryItemRepository.findByExpirationDateBeforeOrderByExpirationDateAsc(threshold)
+        return pantryItemRepository.findByExpirationDateLessThanEqualOrderByExpirationDateAsc(threshold)
                 .stream()
                 .map(PantryItemResponse::fromEntity)
                 .toList();
