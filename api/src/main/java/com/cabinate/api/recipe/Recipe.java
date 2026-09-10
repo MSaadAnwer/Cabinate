@@ -2,6 +2,7 @@ package com.cabinate.api.recipe;
 
 import java.time.Instant;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import lombok.Data;
 import lombok.Builder;
@@ -18,6 +19,7 @@ public class Recipe {
     @Id
     private String id;
 
+    @Indexed
     private String title;
     private String description;
     private String sourceUrl;

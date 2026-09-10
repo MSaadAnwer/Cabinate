@@ -1,0 +1,10 @@
+# Standard Spring Boot test configuration
+# Disables eager auto-index creation and startup database seeding during automated test execution
+spring:
+  data:
+    mongodb:
+      auto-index-creation: false
+
+cabinate:
+  seed:
+    enabled: false

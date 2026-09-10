@@ -28,8 +28,8 @@
 - [x] Integrate React client with Spring Boot API endpoints
 
 ## Milestone 3: Data Lakehouse & ETL Pipeline (Databricks + Python)
-- [ ] Set up Snowflake trial account, database, schemas (`RAW`, `STAGING`, `ANALYTICS`), and warehouse
-- [ ] Design Snowflake dimensional star schema (`DIM_INGREDIENTS`, `DIM_NUTRITION`, `FACT_PANTRY_INVENTORY`)
+- [x] Set up Snowflake trial account, database, schemas (`RAW`, `STAGING`, `ANALYTICS`), and warehouse
+- [x] Design Snowflake dimensional star schema (`DIM_INGREDIENTS`, `DIM_NUTRITION`, `FACT_PANTRY_INVENTORY`)
 - [ ] Implement Databricks PySpark pipeline:
   - Connect to MongoDB source
   - Parse unstructured recipe strings, extract quantities, units, and ingredient names

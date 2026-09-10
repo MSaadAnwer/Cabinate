@@ -27,22 +27,24 @@ export const App: React.FC = () => {
   const [isSeeding, setIsSeeding] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const addToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+  const addToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
     const id = Math.random().toString(36).substring(2, 9);
     setToasts((prev) => [...prev, { id, type, message }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 4000);
-  };
+  }, []);
 
-  const removeToast = (id: string) => {
+  const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
+  }, []);
 
   // Load all initial data
-  const loadAllData = useCallback(async () => {
+  const loadAllData = useCallback(async (withLoadingState = false) => {
     try {
-      setIsLoading(true);
+      if (withLoadingState) {
+        setIsLoading(true);
+      }
       const [pantryRes, expiringRes, recipesRes, ingestRes] = await Promise.all([
         pantryApi.getAll(),
         pantryApi.getExpiring(),
@@ -61,11 +63,45 @@ export const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [addToast]);
 
   useEffect(() => {
-    loadAllData();
-  }, [loadAllData]);
+    let ignore = false;
+
+    const fetchInitialData = async () => {
+      try {
+        const [pantryRes, expiringRes, recipesRes, ingestRes] = await Promise.all([
+          pantryApi.getAll(),
+          pantryApi.getExpiring(),
+          recipeApi.getAll(),
+          ingestApi.getAll(),
+        ]);
+
+        if (!ignore) {
+          setPantryItems(pantryRes);
+          setExpiringItems(expiringRes);
+          setRecipes(recipesRes);
+          setIngestPayloads(ingestRes);
+          setIsOnline(true);
+        }
+      } catch (err: any) {
+        if (!ignore) {
+          setIsOnline(false);
+          addToast(err?.message || 'Failed to connect to Cabinate API', 'error');
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchInitialData();
+
+    return () => {
+      ignore = true;
+    };
+  }, [addToast]);
 
   // Seed handler
   const handleSeedData = async () => {

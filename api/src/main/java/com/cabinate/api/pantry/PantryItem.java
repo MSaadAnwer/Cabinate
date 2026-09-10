@@ -23,6 +23,7 @@ public class PantryItem {
     private String name;
     private Double quantity;
     private String unit;
+    @Indexed
     private String category;
     private String location;
 
