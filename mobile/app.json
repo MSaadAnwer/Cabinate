@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Cabinate",
+    "slug": "cabinate",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "cabinate",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.cabinate.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Cabinate uses the camera to scan grocery receipts.",
+        "NSPhotoLibraryUsageDescription": "Cabinate can import receipt images from your photo library."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
