@@ -31,13 +31,29 @@
 - [x] Scaffold `mobile/` as a React Native + Expo + TypeScript app
 - [x] Reuse or mirror existing TypeScript API contracts for pantry, recipes, and ingest workflows
 - [x] Build mobile-first navigation for Inventory, Recipes, Grocery List, and Capture
-- [ ] Add camera-based receipt scanning entry point
-- [ ] Add paste/share-link entry point for Instagram Reels, TikTok, and YouTube Shorts recipe imports
+- [x] Add camera/library receipt photo entry point with local saved receipts
+- [x] Add paste-link entry point and saved capture inbox for social recipe links (native share extension deferred)
 - [ ] Add receipt scanning flow for staging pantry inventory updates
 - [ ] Add social recipe import flow for Instagram Reels, TikTok, and YouTube Shorts links
-- [ ] Add recipe-based grocery list builder that only includes ingredients missing from pantry inventory
+- [x] Add recipe-based grocery lists with optional conservative pantry-name matching and review
+- [ ] Extend pantry matching with quantity comparisons and unit conversions
 - [x] Configure EAS Build for iOS development builds from Windows
 - [x] Document physical iPhone testing flow and App Store/TestFlight release requirements
+
+## Milestone 2B: Kitchen Companion Redesign
+- [x] Home-first navigation, farm silhouettes, and uneven tomato sections for List, Pantry, Cookbook, Account
+- [x] Illustrated Pantry categories, All/search, animated add menu, and validated manual item creation
+- [x] Multiple named grocery lists, aisle grouping/correction, and persistent item checks
+- [x] Manual recipe creation, searchable cookbook, ingredient view, and persistent cooking steps
+- [x] Monthly meal-photo calendar with captions and pantry expiration markers
+- [x] In-app expiration reminders and account placeholder
+- [x] Persist lists, photos, and cooking progress on the device
+- [x] TypeScript checks, recipe/date tests, iOS export, and browser interaction checks
+- [ ] Physical iPhone verification of camera permissions, photo persistence, keyboard, and native transitions
+- [ ] Connect AI recipe generation, automatic receipt/video extraction, product recall feed, and push notifications
+- [ ] Add account authentication and sync locally stored records between devices
+
+The manual flows are implemented first by product decision. AI and automatic extraction remain visibly marked as upcoming; the inspiration screen currently suggests existing saved recipes with pantry matches.
 
 ## Milestone 3: Data Lakehouse & ETL Pipeline (Databricks + Python)
 - [x] Set up Snowflake trial account, database, schemas (`RAW`, `STAGING`, `ANALYTICS`), and warehouse

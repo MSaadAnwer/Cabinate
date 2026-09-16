@@ -1,32 +1,46 @@
 # Cabinate Mobile
 
-Cabinate Mobile is the iOS-first client for the Cabinate pantry, recipe, receipt capture, and grocery list workflows. It is built with React Native, Expo, and TypeScript.
+An iOS-first kitchen companion built with Expo SDK 57, React Native, TypeScript, and Expo Router.
 
-## Development On Windows
+## Run on an iPhone from Windows
 
-1. Start the Spring Boot API from `../api`.
-2. Set `EXPO_PUBLIC_API_URL` to the API URL reachable by your device.
-3. Start Expo from this folder.
+Start MongoDB with `docker compose up -d` from the repository root, then run `.\mvnw.cmd spring-boot:run` from `api/`.
 
-For an iPhone on the same Wi-Fi network, use your Windows machine's LAN IP instead of `localhost`:
+From `mobile/`:
 
 ```powershell
+npm.cmd ci
+npx.cmd expo login --browser
 $env:EXPO_PUBLIC_API_URL="http://YOUR_WINDOWS_LAN_IP:8080/api/v1"
-npm.cmd start
+npm.cmd start -- --port 8082 --host lan
 ```
 
-Early UI work can run through Expo Go. When camera workflows, native dependencies, or production-like behavior are needed, use an Expo development build through EAS.
+Sign in to the same Expo account on the PC and in Expo Go. Connect the phone to the PC's network and scan the QR code. Camera testing requires the physical phone. Restart Metro after dependency or entry-point changes.
 
-## Build Strategy
+## Current experience
 
-- Use EAS cloud builds for iOS from Windows.
-- Use a physical iPhone for testing from Windows.
-- Use macOS/Xcode only when local iOS Simulator testing or deep native debugging is required.
-- Apple Developer Program membership is required for TestFlight and App Store distribution.
+- Home: quiet farm silhouettes, notifications/calendar shortcuts, and four uneven tomato sections.
+- Pantry: illustrated categories, All/search, manual item creation with expiration dates, receipt camera/library capture, and saved product links.
+- List: multiple named lists, automatic aisle grouping with manual category correction, item checks, and recipe import with optional pantry matching and a review step.
+- Cookbook: search, manual recipes, video-link capture inbox, ingredients, persistent cooking checklists, and pantry matches from existing recipes.
+- Calendar: month navigation, daily meal photos/captions, and pantry expiration markers.
+- Notifications: expired items and the next seven days of expirations.
+- Account: placeholder profile and capture inbox.
 
-## Current Mobile Slice
+Pantry and recipe data use the Spring Boot API. Lists, meal photos, receipt photos, and cooking progress persist locally on the device. Photos are copied to the app's document directory, not left in the temporary picker cache. These local records do not sync between devices.
 
-- Inventory tab loads pantry items from the existing API.
-- Recipes tab loads recipes from the existing API.
-- Grocery List tab builds a draft missing-ingredient list from the selected recipe and current pantry names.
-- Capture tab submits raw social links, receipt text, or recipe notes to the existing ingest API.
+## Deliberately deferred
+
+AI generation, automatic receipt/video extraction, recall feeds, push notifications, and account authentication need backend services and are clearly marked as upcoming. Saved links go to the existing raw-ingestion endpoint; they do not silently create recipes or pantry items.
+
+Pantry-aware list import conservatively matches normalized ingredient names, excludes expired/zero-quantity inventory, and lets the user review the result. It does not convert units, compare amounts, split compound ingredient lines, or infer substitutions. Uncertain matches remain on the shopping list.
+
+## Validation
+
+```powershell
+npm.cmd run typecheck
+npm.cmd test
+npx.cmd expo export --platform ios --output-dir dist-ios
+```
+
+Browser preview (`npm.cmd run web`) is useful for layouts and manual flows; physical iPhone testing remains necessary for camera permissions, photo persistence, native transitions, and keyboard behavior.
