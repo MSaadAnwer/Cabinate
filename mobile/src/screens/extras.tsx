@@ -7,6 +7,7 @@ import { useKitchen } from "../state/kitchen-store";
 import { daysUntil, expiryLabel } from "../utils/kitchen";
 import { ingestApi } from "../services/api";
 import type { RawIngestPayload } from "../types/ingest";
+import { RecallNotices } from "../components/recall-feed";
 
 export function NotificationsScreen() {
   const { pantry, loading, error, reload } = useKitchen();
@@ -46,13 +47,7 @@ export function NotificationsScreen() {
           text="Your dated pantry items look good for the next seven days."
         />
       )}
-      <View style={s.card}>
-        <Text style={s.heading}>Product recalls</Text>
-        <Text style={s.body}>
-          Recall alerts aren’t connected yet. This area will show product safety
-          updates when that service is added.
-        </Text>
-      </View>
+      <RecallNotices />
       <Text style={s.muted}>
         Expiration reminders are shown here when you open the app. Phone push
         notifications are not enabled yet.

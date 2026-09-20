@@ -55,6 +55,17 @@ function useStore() {
   const [error, setError] = useState("");
   const [storageError, setStorageError] = useState("");
   const queue = useRef(Promise.resolve());
+  const deletedPantryIds = useRef(new Set<string>());
+  const deletePantryItem = useCallback(async (id: string) => {
+    try {
+      await pantryApi.delete(id);
+    } catch (error) {
+      if ((error as { status?: number }).status !== 404) throw error;
+    }
+    // Also filter late refresh responses, so a deleted expiration cannot reappear.
+    deletedPantryIds.current.add(id);
+    setPantry((previous) => previous.filter((item) => item.id !== id));
+  }, []);
   const reload = useCallback(async () => {
     setLoading(true);
     try {
@@ -62,7 +73,7 @@ function useStore() {
         pantryApi.getAll(),
         recipeApi.getAll(),
       ]);
-      setPantry(p);
+      setPantry(p.filter((item) => !deletedPantryIds.current.has(item.id)));
       setRecipes(r);
       setError("");
     } catch (e) {
@@ -118,6 +129,7 @@ function useStore() {
   return {
     pantry,
     setPantry,
+    deletePantryItem,
     recipes,
     setRecipes,
     data,

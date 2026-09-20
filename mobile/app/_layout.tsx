@@ -110,6 +110,7 @@ function Navigator() {
           />
         ))}
         <Stack.Screen name="inventory" options={{ title: "Pantry items" }} />
+        <Stack.Screen name="recalls" options={{ title: "Recalls" }} />
         <Stack.Screen name="list-detail" options={{ title: "Grocery list" }} />
         <Stack.Screen name="recipe-detail" options={{ title: "Recipe" }} />
         <Stack.Screen name="calendar" options={{ title: "Kitchen calendar" }} />
