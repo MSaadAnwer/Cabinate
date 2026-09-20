@@ -3,7 +3,6 @@ import { Alert, Pressable, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Icon } from "../components/art";
 import {
-  BottomNav,
   Button,
   CheckRow,
   Empty,
@@ -80,7 +79,6 @@ export default function ListsScreen() {
           },
         ]}
       />
-      <BottomNav active="List" />
     </View>
   );
 }
@@ -162,6 +160,7 @@ export function ListDetailScreen() {
   const list = data.lists.find((item) => item.id === id);
   const [itemName, setItemName] = useState("");
   const [category, setCategory] = useState<Category | null>(null);
+  const [showComposer, setShowComposer] = useState(false);
   const [busy, setBusy] = useState(false);
   if (!list)
     return (
@@ -237,48 +236,15 @@ export function ListDetailScreen() {
         {list.items.filter((item) => item.checked).length} of{" "}
         {list.items.length} picked up
       </Text>
-      <Field
-        label="Add an item"
-        placeholder="What else do you need?"
-        value={itemName}
-        onChangeText={setItemName}
-        onSubmitEditing={() => void addItem()}
-      />
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-        {categories.map((value) => (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{
-              selected: (category || categoryFor(itemName)) === value,
-            }}
-            key={value}
-            onPress={() => setCategory(value)}
-            style={[
-              s.chip,
-              {
-                backgroundColor:
-                  (category || categoryFor(itemName)) === value
-                    ? "#E4E8D7"
-                    : "transparent",
-              },
-            ]}
-          >
-            <Text style={s.muted}>{value}</Text>
-          </Pressable>
-        ))}
-      </View>
-      <Button
-        title="Add to list"
-        disabled={!itemName.trim() || busy}
-        onPress={() => void addItem()}
-      />
+      {!list.items.length && <Text style={s.muted}>Nothing on this list yet. Add your first item below.</Text>}
       {categories.map((value) => {
         const entries = list.items.filter((item) => item.category === value);
         return entries.length ? (
           <View key={value}>
             <Text style={s.eyebrow}>{value}</Text>
             {entries.map((item) => (
-              <View key={item.id}>
+              <View key={item.id} style={s.row}>
+                <View style={{ flex: 1 }}>
                 <CheckRow
                   title={item.name}
                   checked={item.checked}
@@ -300,9 +266,10 @@ export function ListDetailScreen() {
                     })).catch(reportError);
                   }}
                 />
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Change category for ${item.name}`}
+                </View>
+                <IconButton
+                  name="edit"
+                  label={`Change aisle for ${item.name}`}
                   onPress={() =>
                     Alert.alert(
                       "Move to aisle",
@@ -329,15 +296,45 @@ export function ListDetailScreen() {
                       })),
                     )
                   }
-                  style={{ minHeight: 44, justifyContent: "center" }}
-                >
-                  <Text style={[s.muted, { fontSize: 11 }]}>Change aisle</Text>
-                </Pressable>
+                />
               </View>
             ))}
           </View>
         ) : null;
       })}
+      <Button
+        title={showComposer ? "Done adding" : "Add an item"}
+        secondary
+        icon={showComposer ? "check" : "plus"}
+        onPress={() => setShowComposer((value) => !value)}
+      />
+      {showComposer && (
+        <View style={{ gap: 12 }}>
+          <Field
+            label="Item name"
+            placeholder="What else do you need?"
+            value={itemName}
+            onChangeText={setItemName}
+            onSubmitEditing={() => void addItem()}
+            returnKeyType="done"
+          />
+          <Text style={s.muted}>Aisle: {category || categoryFor(itemName)} · tap to change</Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+            {categories.map((value) => (
+              <Pressable
+                key={value}
+                accessibilityRole="button"
+                accessibilityState={{ selected: (category || categoryFor(itemName)) === value }}
+                onPress={() => setCategory(value)}
+                style={[s.chip, { backgroundColor: (category || categoryFor(itemName)) === value ? "#E4E8D7" : "transparent" }]}
+              >
+                <Text style={s.muted}>{value}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <Button title={busy ? "Adding…" : "Add to list"} disabled={!itemName.trim() || busy} onPress={() => void addItem()} />
+        </View>
+      )}
     </FormPage>
   );
 }

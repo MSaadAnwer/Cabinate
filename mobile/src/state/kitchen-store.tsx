@@ -50,8 +50,11 @@ function useStore() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [data, setData] = useState<LocalData>(empty);
   const current = useRef(data);
+  const persisted = useRef(data);
+  const revision = useRef(0);
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
   const [storageError, setStorageError] = useState("");
   const queue = useRef(Promise.resolve());
@@ -75,6 +78,7 @@ function useStore() {
       ]);
       setPantry(p.filter((item) => !deletedPantryIds.current.has(item.id)));
       setRecipes(r);
+      setLoaded(true);
       setError("");
     } catch (e) {
       setError(
@@ -98,6 +102,7 @@ function useStore() {
           )
             throw new Error("Invalid saved data");
           current.current = parsed;
+          persisted.current = parsed;
           setData(parsed);
         }
         setReady(true);
@@ -108,18 +113,26 @@ function useStore() {
         ),
       );
   }, [reload]);
-  // Serialize writes so rapidly checking items never overwrites a newer change.
+  // Publish changes immediately, but write snapshots in order. A failed latest
+  // write rolls back; a later successful snapshot already includes that change.
   const update = useCallback(
     (change: (previous: LocalData) => LocalData): Promise<void> => {
+      if (!ready) return Promise.reject(new Error("Your saved data is still loading. Please try again."));
+      const next = change(current.current);
+      const id = ++revision.current;
+      current.current = next;
+      setData(next);
       const task = queue.current.then(async () => {
-        if (!ready)
-          throw new Error(
-            "Your saved data is still loading. Please try again.",
-          );
-        const next = change(current.current);
         await AsyncStorage.setItem(key, JSON.stringify(next));
-        current.current = next;
-        setData(next);
+        persisted.current = next;
+        setStorageError("");
+      }).catch((error) => {
+        if (revision.current === id) {
+          current.current = persisted.current;
+          setData(persisted.current);
+        }
+        setStorageError("Could not save your last change. Please try again.");
+        throw error;
       });
       queue.current = task.catch(() => {});
       return task;
@@ -136,6 +149,7 @@ function useStore() {
     update,
     ready,
     loading,
+    loaded,
     error,
     storageError,
     reload,

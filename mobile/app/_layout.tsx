@@ -80,39 +80,17 @@ function Navigator() {
             ),
           }}
         />
-        {["pantry", "lists", "cookbook", "account"].map((name) => (
-          <Stack.Screen
-            key={name}
-            name={name}
-            options={{
-              // Primary sections are peers, not successive pages in a flow.
-              animation: "none",
-              gestureEnabled: false,
-              title:
-                name === "lists"
-                  ? "List"
-                  : name[0].toUpperCase() + name.slice(1),
-              headerLeft: () => (
-                <IconButton
-                  name="back"
-                  label="Back to home"
-                  onPress={() => router.dismissTo("/")}
-                />
-              ),
-              headerRight: () => (
-                <IconButton
-                  name="calendar"
-                  label="Meal calendar"
-                  onPress={() => router.push("/calendar")}
-                />
-              ),
-            }}
-          />
-        ))}
-        <Stack.Screen name="inventory" options={{ title: "Pantry items" }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: "none" }} />
+        <Stack.Screen name="inventory" options={{ title: "Pantry items", headerLeft: () => (
+          <IconButton name="back" label="Back to pantry" onPress={() => router.canGoBack() ? router.back() : router.replace("/pantry")} />
+        ) }} />
         <Stack.Screen name="recalls" options={{ title: "Recalls" }} />
-        <Stack.Screen name="list-detail" options={{ title: "Grocery list" }} />
-        <Stack.Screen name="recipe-detail" options={{ title: "Recipe" }} />
+        <Stack.Screen name="list-detail" options={{ title: "Grocery list", headerLeft: () => (
+          <IconButton name="back" label="Back to lists" onPress={() => router.canGoBack() ? router.back() : router.replace("/lists")} />
+        ) }} />
+        <Stack.Screen name="recipe-detail" options={{ title: "Recipe", headerLeft: () => (
+          <IconButton name="back" label="Back to cookbook" onPress={() => router.canGoBack() ? router.back() : router.replace("/cookbook")} />
+        ) }} />
         <Stack.Screen name="calendar" options={{ title: "Kitchen calendar" }} />
         <Stack.Screen
           name="notifications"

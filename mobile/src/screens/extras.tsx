@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { Pressable, RefreshControl, Text, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { Icon, TomatoMark } from "../components/art";
-import { BottomNav, Button, Empty, ErrorText, Page, s } from "../components/ui";
+import { Button, Empty, ErrorText, Page, s } from "../components/ui";
 import { useKitchen } from "../state/kitchen-store";
 import { daysUntil, expiryLabel } from "../utils/kitchen";
 import { ingestApi } from "../services/api";
@@ -93,7 +93,6 @@ export function AccountScreen() {
           server.
         </Text>
       </Page>
-      <BottomNav active="Account" />
     </View>
   );
 }

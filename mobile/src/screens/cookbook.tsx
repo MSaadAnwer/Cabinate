@@ -3,9 +3,9 @@ import { Pressable, RefreshControl, Switch, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { FoodShape, Icon } from "../components/art";
 import {
-  BottomNav,
   Button,
   CheckRow,
+  DataNotice,
   Empty,
   ErrorText,
   Field,
@@ -19,7 +19,7 @@ import { useKitchen } from "../state/kitchen-store";
 import { inPantry, newId, parseRecipe, categoryFor } from "../utils/kitchen";
 
 export default function CookbookScreen() {
-  const { recipes, loading, error, reload } = useKitchen();
+  const { recipes, loading, loaded, error, reload } = useKitchen();
   const [query, setQuery] = useState("");
   const matches = recipes.filter((recipe) =>
     recipe.title.toLowerCase().includes(query.toLowerCase()),
@@ -57,7 +57,7 @@ export default function CookbookScreen() {
           onChangeText={setQuery}
           placeholder="Something delicious…"
         />
-        <ErrorText message={error} />
+        <DataNotice loading={loading} loaded={loaded} error={error} onRetry={() => void reload()} />
         {matches.map((recipe, index) => (
           <Pressable
             key={recipe.id}
@@ -105,11 +105,14 @@ export default function CookbookScreen() {
             <Icon name="chevron" size={16} />
           </Pressable>
         ))}
-        {!matches.length && !loading && (
+        {!matches.length && loaded && !loading && !query && (
           <Empty
             title="A recipe worth keeping"
             text="Add a family favorite by hand, or save a video link for later."
           />
+        )}
+        {!matches.length && loaded && !!query && (
+          <Text style={s.muted}>No recipes match “{query}”.</Text>
         )}
       </Page>
       <FloatingAdd
@@ -130,7 +133,6 @@ export default function CookbookScreen() {
           },
         ]}
       />
-      <BottomNav active="Cookbook" />
     </View>
   );
 }

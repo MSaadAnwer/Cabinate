@@ -13,7 +13,6 @@ import {
   type TextInputProps,
   type ScrollViewProps,
 } from "react-native";
-import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon, TomatoMark, type IconName } from "./art";
 
@@ -120,24 +119,50 @@ export function Button({
   disabled?: boolean;
   icon?: IconName;
 }) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const reduce = useRef(false);
+  useEffect(() => {
+    void AccessibilityInfo.isReduceMotionEnabled().then((value) => { reduce.current = value; });
+    const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", (value) => {
+      reduce.current = value;
+      if (value) scale.setValue(1);
+    });
+    return () => subscription.remove();
+  }, []);
+  const animatePress = (pressed: boolean) => {
+    if (reduce.current) return;
+    Animated.spring(scale, {
+      toValue: pressed ? 0.98 : 1,
+      speed: 25,
+      bounciness: 2,
+      useNativeDriver: true,
+    }).start();
+  };
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
+      onPressIn={() => animatePress(true)}
+      onPressOut={() => animatePress(false)}
       onPress={onPress}
       style={({ pressed }) => ({
+        minHeight: 52,
+        borderRadius: 16,
+        opacity: disabled ? 0.45 : pressed ? 0.86 : 1,
+      })}
+    >
+      <Animated.View style={{
         minHeight: 52,
         padding: 14,
         borderRadius: 16,
         backgroundColor: secondary ? "#E9ECDC" : colors.ink,
-        opacity: disabled ? 0.45 : pressed ? 0.72 : 1,
         flexDirection: "row",
         gap: 10,
         justifyContent: "center",
         alignItems: "center",
-      })}
-    >
+        transform: [{ scale }],
+      }}>
       {icon && (
         <Icon name={icon} color={secondary ? colors.ink : colors.cream} />
       )}
@@ -152,6 +177,7 @@ export function Button({
       >
         {title}
       </Text>
+      </Animated.View>
     </Pressable>
   );
 }
@@ -229,12 +255,13 @@ export function CheckRow({
       accessibilityState={{ checked }}
       accessibilityLabel={title}
       onPress={onPress}
-      style={[
+      style={({ pressed }) => [
         s.row,
         {
           paddingVertical: 14,
           borderBottomWidth: 1,
           borderBottomColor: colors.line,
+          backgroundColor: pressed ? "#EFF1E7" : "transparent",
         },
       ]}
     >
@@ -281,6 +308,35 @@ export function ErrorText({ message }: { message: string }) {
     </Text>
   ) : null;
 }
+export function DataNotice({
+  loading,
+  loaded,
+  error,
+  onRetry,
+}: {
+  loading: boolean;
+  loaded: boolean;
+  error: string;
+  onRetry: () => void;
+}) {
+  if (loading && !loaded) {
+    return <Text style={s.muted}>Opening your kitchen…</Text>;
+  }
+  if (!error) return null;
+  return (
+    <View style={[s.card, { backgroundColor: "#F5EBE5", borderColor: "#E6CEC3" }]}>
+      <Text style={[s.body, { fontWeight: "600" }]}>
+        {loaded ? "Couldn’t refresh your kitchen" : "Couldn’t load your kitchen"}
+      </Text>
+      <Text style={s.muted}>
+        {loaded
+          ? "Your saved view is still here. Check your connection and try again."
+          : "Check your connection and try again."}
+      </Text>
+      <Button title="Try again" secondary disabled={loading} onPress={onRetry} />
+    </View>
+  );
+}
 export function reportError(error: unknown) {
   Alert.alert(
     "Could not save",
@@ -296,7 +352,6 @@ export function FloatingAdd({
   const [visible, setVisible] = useState(false);
   const progress = useRef(new Animated.Value(0)).current;
   const reduce = useRef(false);
-  const inset = useSafeAreaInsets();
   useEffect(() => {
     void AccessibilityInfo.isReduceMotionEnabled().then((value) => {
       reduce.current = value;
@@ -325,7 +380,7 @@ export function FloatingAdd({
       pointerEvents="box-none"
       style={{
         position: "absolute",
-        bottom: 76 + inset.bottom,
+        bottom: 18,
         left: 24,
         right: 24,
         alignItems: "flex-start",
@@ -418,57 +473,6 @@ export function FloatingAdd({
           <Icon name="plus" color={colors.cream} size={28} />
         </Animated.View>
       </Pressable>
-    </View>
-  );
-}
-const destinations = [
-  { path: "/lists", title: "List", icon: "list" },
-  { path: "/pantry", title: "Pantry", icon: "pantry" },
-  { path: "/cookbook", title: "Cookbook", icon: "book" },
-  { path: "/account", title: "Account", icon: "account" },
-] as const;
-export function BottomNav({ active }: { active: string }) {
-  const inset = useSafeAreaInsets();
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        paddingHorizontal: 12,
-        paddingTop: 10,
-        paddingBottom: Math.max(inset.bottom, 12),
-        borderTopWidth: 1,
-        borderTopColor: colors.line,
-        backgroundColor: colors.cream,
-      }}
-    >
-      {destinations.map((item) => (
-        <Pressable
-          key={item.path}
-          accessibilityRole="tab"
-          accessibilityState={{ selected: active === item.title }}
-          onPress={() => {
-            if (active !== item.title) router.replace(item.path);
-          }}
-          style={{
-            flex: 1,
-            alignItems: "center",
-            minHeight: 46,
-            gap: 4,
-            opacity: active === item.title ? 1 : 0.55,
-          }}
-        >
-          <Icon name={item.icon} />
-          <Text
-            style={{
-              fontSize: 11,
-              color: colors.ink,
-              fontWeight: active === item.title ? "700" : "400",
-            }}
-          >
-            {item.title}
-          </Text>
-        </Pressable>
-      ))}
     </View>
   );
 }

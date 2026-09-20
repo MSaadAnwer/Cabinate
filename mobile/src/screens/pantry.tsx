@@ -3,8 +3,8 @@ import { Pressable, RefreshControl, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { FoodShape, Icon } from "../components/art";
 import {
-  BottomNav,
   Button,
+  DataNotice,
   IconButton,
   Empty,
   ErrorText,
@@ -22,7 +22,7 @@ import {
 } from "../utils/kitchen";
 
 export default function PantryScreen() {
-  const { pantry, error, loading, reload } = useKitchen();
+  const { pantry, error, loading, loaded, reload } = useKitchen();
   return (
     <View style={{ flex: 1 }}>
       <Page
@@ -33,7 +33,8 @@ export default function PantryScreen() {
       >
         <Text style={s.eyebrow}>A place for everything</Text>
         <Text style={s.title}>Your pantry.</Text>
-        <ErrorText message={error} />
+        <DataNotice loading={loading} loaded={loaded} error={error} onRetry={() => void reload()} />
+        {loaded && <>
         <Pressable
           accessibilityRole="button"
           onPress={() => router.push("/inventory")}
@@ -83,6 +84,7 @@ export default function PantryScreen() {
             </Pressable>
           ))}
         </View>
+        </>}
       </Page>
       <FloatingAdd
         actions={[
@@ -107,13 +109,12 @@ export default function PantryScreen() {
           },
         ]}
       />
-      <BottomNav active="Pantry" />
     </View>
   );
 }
 export function InventoryScreen() {
   const { category } = useLocalSearchParams<{ category?: string }>();
-  const { pantry, loading, error, reload, deletePantryItem } = useKitchen();
+  const { pantry, loading, loaded, error, reload, deletePantryItem } = useKitchen();
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
@@ -152,12 +153,15 @@ export function InventoryScreen() {
         value={search}
         onChangeText={setSearch}
       />
-      <ErrorText message={error} />
-      {!items.length && !loading && (
+      <DataNotice loading={loading} loaded={loaded} error={error} onRetry={() => void reload()} />
+      {!items.length && loaded && !loading && !search && (
         <Empty
           title="A little room to grow"
           text="Add your first item using the button below."
         />
+      )}
+      {!items.length && loaded && !!search && (
+        <Text style={s.muted}>No pantry items match “{search}”.</Text>
       )}
       {items.map((item) => (
         <View key={item.id} style={s.card}>
