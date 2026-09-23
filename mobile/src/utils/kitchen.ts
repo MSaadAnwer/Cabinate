@@ -155,3 +155,14 @@ export function expiryLabel(date?: string | null): string {
 }
 export const newId = () =>
   `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+
+export function recipeArtwork(id: string) {
+  let hash = 0;
+  for (const char of id) hash = ((hash << 5) - hash + char.charCodeAt(0)) >>> 0;
+  const styles = [
+    { category: "Produce" as Category, background: "#EFF0DE" },
+    { category: "Meat & fish" as Category, background: "#E9EEE9" },
+    { category: "Bread & grains" as Category, background: "#F3E8DE" },
+  ];
+  return styles[hash % styles.length];
+}

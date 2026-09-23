@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { Pressable, RefreshControl, Switch, Text, View } from "react-native";
+import { useFormDraft } from "../components/form-draft";
+import { Touch as Pressable, useFeedback } from "../components/feedback";
+import { useRef, useState } from "react";
+import { RefreshControl, Switch, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { FoodShape, Icon } from "../components/art";
 import {
@@ -9,6 +11,7 @@ import {
   Empty,
   ErrorText,
   Field,
+  SearchField,
   FloatingAdd,
   FormPage,
   Page,
@@ -16,7 +19,13 @@ import {
   s,
 } from "../components/ui";
 import { useKitchen } from "../state/kitchen-store";
-import { inPantry, newId, parseRecipe, categoryFor } from "../utils/kitchen";
+import {
+  inPantry,
+  newId,
+  parseRecipe,
+  categoryFor,
+  recipeArtwork,
+} from "../utils/kitchen";
 
 export default function CookbookScreen() {
   const { recipes, loading, loaded, error, reload } = useKitchen();
@@ -28,10 +37,9 @@ export default function CookbookScreen() {
     <View style={{ flex: 1 }}>
       <Page
         refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={reload} />
+          <RefreshControl refreshing={loading && loaded} onRefresh={reload} />
         }
       >
-        <Text style={s.eyebrow}>Keep the keepers</Text>
         <View style={s.row}>
           <Text style={[s.title, { flex: 1 }]}>Your cookbook.</Text>
           <Pressable
@@ -51,20 +59,25 @@ export default function CookbookScreen() {
             <Icon name="sparkles" />
           </Pressable>
         </View>
-        <Field
+        <SearchField
           label="Find a recipe"
           value={query}
           onChangeText={setQuery}
           placeholder="Something delicious…"
         />
-        <DataNotice loading={loading} loaded={loaded} error={error} onRetry={() => void reload()} />
-        {matches.map((recipe, index) => (
+        <DataNotice
+          loading={loading}
+          loaded={loaded}
+          error={error}
+          onRetry={() => void reload()}
+        />
+        {matches.map((recipe) => (
           <Pressable
             key={recipe.id}
             accessibilityRole="button"
             onPress={() =>
               router.push({
-                pathname: "/recipe-detail",
+                pathname: "/cookbook/recipe",
                 params: { id: recipe.id },
               })
             }
@@ -72,7 +85,7 @@ export default function CookbookScreen() {
           >
             <View
               style={{
-                backgroundColor: ["#EFF0DE", "#E9EEE9", "#F3E8DE"][index % 3],
+                backgroundColor: recipeArtwork(recipe.id).background,
                 borderRadius: 16,
                 width: 80,
                 height: 104,
@@ -81,11 +94,7 @@ export default function CookbookScreen() {
               }}
             >
               <FoodShape
-                category={
-                  ["Produce", "Meat & fish", "Bread & grains"][
-                    index % 3
-                  ] as "Produce"
-                }
+                category={recipeArtwork(recipe.id).category}
                 width={64}
                 height={80}
               />
@@ -138,9 +147,22 @@ export default function CookbookScreen() {
 }
 export function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { recipes, data, update } = useKitchen();
+  const { recipes, data, update, loaded, loading, error, reload } =
+    useKitchen();
   const [tab, setTab] = useState<"ingredients" | "steps">("ingredients");
   const recipe = recipes.find((item) => item.id === id);
+  if (!recipe && (!loaded || loading || error))
+    return (
+      <Page>
+        <DataNotice
+          loading={loading}
+          loaded={loaded}
+          error={error}
+          subject="this recipe"
+          onRetry={() => void reload()}
+        />
+      </Page>
+    );
   if (!recipe)
     return (
       <Page>
@@ -271,6 +293,8 @@ export function ImportListScreen() {
     recipes,
     pantry,
     loading,
+    loaded,
+    reload,
     error: apiError,
     data,
     update,
@@ -290,8 +314,15 @@ export function ImportListScreen() {
   const included = ingredients.filter(
     (line) => !available.includes(line) && !excluded.includes(line),
   );
+  const { notify } = useFeedback();
+  const saving = useRef(false);
+  const draft = useFormDraft(
+    selected !== (recipeId || "") || !!name || usePantry || excluded.length > 0,
+    busy,
+  );
   const save = async () => {
-    if (!recipe || !included.length) return;
+    if (saving.current || !ready || !recipe || !included.length) return;
+    saving.current = true;
     setBusy(true);
     setError("");
     const id = newId();
@@ -313,21 +344,46 @@ export function ImportListScreen() {
           ...previous.lists,
         ],
       }));
-      router.replace({ pathname: "/list-detail", params: { id } });
+      notify("List created");
+      draft.finish(() =>
+        router.dismissTo({ pathname: "/lists/detail", params: { id } }),
+      );
     } catch (e) {
       setError((e as Error).message);
     } finally {
+      saving.current = false;
       setBusy(false);
     }
   };
   return (
-    <FormPage>
+    <FormPage
+      footer={
+        recipe ? (
+          <>
+            <ErrorText message={error} />
+            <Button
+              title={`Create list · ${included.length} items`}
+              pending={busy}
+              disabled={!included.length || !ready}
+              onPress={() => void save()}
+            />
+          </>
+        ) : undefined
+      }
+    >
+      {draft.guard}
       <Text style={s.title}>From recipe to list.</Text>
       <Text style={s.body}>Choose something you’d love to cook.</Text>
-      <ErrorText message={apiError} />
+      <DataNotice
+        loading={loading}
+        loaded={loaded}
+        error={apiError}
+        onRetry={() => void reload()}
+      />
       {recipes.map((item) => (
         <Pressable
           key={item.id}
+          disabled={busy}
           accessibilityRole="radio"
           accessibilityState={{ checked: selected === item.id }}
           onPress={() => {
@@ -348,7 +404,7 @@ export function ImportListScreen() {
           {selected === item.id && <Icon name="check" />}
         </Pressable>
       ))}
-      {!recipes.length && !loading && (
+      {!recipes.length && loaded && !loading && (
         <Empty
           title="Start with a recipe"
           text="Save a recipe in your cookbook, then come back to make its shopping list."
@@ -358,6 +414,7 @@ export function ImportListScreen() {
         <>
           <Field
             label="List name"
+            editable={!busy}
             placeholder={`For ${recipe.title}`}
             value={name}
             onChangeText={setName}
@@ -371,7 +428,7 @@ export function ImportListScreen() {
               accessibilityLabel="Use pantry when making this list"
               value={usePantry}
               onValueChange={setUsePantry}
-              disabled={loading || !!apiError}
+              disabled={busy || loading || !!apiError}
               trackColor={{ true: "#819568" }}
             />
           </View>
@@ -383,6 +440,7 @@ export function ImportListScreen() {
             <CheckRow
               key={index}
               checked={included.includes(line)}
+              disabled={busy || available.includes(line)}
               title={line}
               detail={
                 available.includes(line)
@@ -411,12 +469,7 @@ export function ImportListScreen() {
               it.
             </Text>
           )}
-          <ErrorText message={error} />
-          <Button
-            title={busy ? "Saving…" : `Create list · ${included.length} items`}
-            disabled={!included.length || busy || !ready}
-            onPress={() => void save()}
-          />
+
           <Text style={s.muted}>
             {data.lists.length} lists saved on this device
           </Text>
@@ -426,7 +479,7 @@ export function ImportListScreen() {
   );
 }
 export function InspirationScreen() {
-  const { pantry, recipes } = useKitchen();
+  const { pantry, recipes, loaded, loading, error, reload } = useKitchen();
   const matches = recipes
     .map((recipe) => ({
       recipe,
@@ -447,13 +500,19 @@ export function InspirationScreen() {
           that use ingredients you already have.
         </Text>
       </View>
+      <DataNotice
+        loading={loading}
+        loaded={loaded}
+        error={error}
+        onRetry={() => void reload()}
+      />
       {matches.map(({ recipe, count }) => (
         <Pressable
           key={recipe.id}
           accessibilityRole="button"
           onPress={() =>
             router.push({
-              pathname: "/recipe-detail",
+              pathname: "/cookbook/recipe",
               params: { id: recipe.id },
             })
           }
@@ -465,7 +524,7 @@ export function InspirationScreen() {
           </Text>
         </Pressable>
       ))}
-      {!matches.length && (
+      {!matches.length && loaded && (
         <Text style={s.muted}>
           No saved recipe matches yet. Add pantry items and recipes to start
           finding ideas here.

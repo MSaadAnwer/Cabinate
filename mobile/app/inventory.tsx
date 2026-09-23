@@ -1,1 +1,5 @@
-export { InventoryScreen as default } from "../src/screens/pantry";
+import { Redirect, useLocalSearchParams } from "expo-router";
+export default function LegacyRoute() {
+  const params = useLocalSearchParams();
+  return <Redirect href={{ pathname: "/pantry/inventory", params }} />;
+}

@@ -1,5 +1,10 @@
-import { useState } from "react";
-import { Pressable, RefreshControl, Text, View } from "react-native";
+import {
+  Touch as Pressable,
+  useFeedback,
+  useRemovalMotion,
+} from "../components/feedback";
+import { useRef, useState } from "react";
+import { RefreshControl, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { FoodShape, Icon } from "../components/art";
 import {
@@ -8,7 +13,7 @@ import {
   IconButton,
   Empty,
   ErrorText,
-  Field,
+  SearchField,
   FloatingAdd,
   Page,
   s,
@@ -28,66 +33,83 @@ export default function PantryScreen() {
       <Page
         bottom={110}
         refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={reload} />
+          <RefreshControl refreshing={loading && loaded} onRefresh={reload} />
         }
       >
-        <Text style={s.eyebrow}>A place for everything</Text>
         <Text style={s.title}>Your pantry.</Text>
-        <DataNotice loading={loading} loaded={loaded} error={error} onRetry={() => void reload()} />
-        {loaded && <>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.push("/inventory")}
-          style={[
-            s.row,
-            {
-              paddingHorizontal: 18,
-              paddingVertical: 13,
-              backgroundColor: "#E9ECDC",
-              borderRadius: 12,
-            },
-          ]}
-        >
-          <Text style={[s.body, { flex: 1, fontWeight: "600" }]}>All</Text>
-          <Text style={s.muted}>{pantry.length} items</Text>
-          <Icon name="chevron" size={17} />
-        </Pressable>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 16 }}>
-          {categories.map((category) => (
+        <DataNotice
+          loading={loading}
+          loaded={loaded}
+          error={error}
+          onRetry={() => void reload()}
+        />
+        {loaded && (
+          <>
             <Pressable
-              key={category}
               accessibilityRole="button"
-              accessibilityLabel={`Open ${category}`}
-              onPress={() =>
-                router.push({ pathname: "/inventory", params: { category } })
-              }
-              style={({ pressed }) => ({
-                width: "47%",
-                alignItems: "center",
-                paddingVertical: 12,
-                gap: 4,
-                opacity: pressed ? 0.6 : 1,
-              })}
-            >
-              <FoodShape category={category} />
-              <Text style={[s.heading, { fontSize: 19 }]}>{category}</Text>
-              <Text style={s.muted}>
+              onPress={() => router.push("/pantry/inventory")}
+              style={[
+                s.row,
                 {
-                  pantry.filter(
-                    (item) =>
-                      categoryFor(item.name, item.category, item.location) ===
-                      category,
-                  ).length
-                }{" "}
-                items
-              </Text>
+                  paddingHorizontal: 18,
+                  paddingVertical: 13,
+                  backgroundColor: "#E9ECDC",
+                  borderRadius: 12,
+                },
+              ]}
+            >
+              <Text style={[s.body, { flex: 1, fontWeight: "600" }]}>All</Text>
+              <Text style={s.muted}>{pantry.length} items</Text>
+              <Icon name="chevron" size={17} />
             </Pressable>
-          ))}
-        </View>
-        </>}
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 16 }}>
+              {categories.map((category) => (
+                <Pressable
+                  key={category}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open ${category}`}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/pantry/inventory",
+                      params: { category },
+                    })
+                  }
+                  style={({ pressed }) => ({
+                    width: "47%",
+                    alignItems: "center",
+                    paddingVertical: 12,
+                    gap: 4,
+                    opacity: pressed ? 0.6 : 1,
+                  })}
+                >
+                  <FoodShape category={category} />
+                  <Text style={[s.heading, { fontSize: 19 }]}>{category}</Text>
+                  <Text style={s.muted}>
+                    {
+                      pantry.filter(
+                        (item) =>
+                          categoryFor(
+                            item.name,
+                            item.category,
+                            item.location,
+                          ) === category,
+                      ).length
+                    }{" "}
+                    items
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </>
+        )}
       </Page>
       <FloatingAdd
         actions={[
+          {
+            title: "Add an item",
+            icon: "edit",
+            onPress: () => router.push("/add-pantry"),
+          },
           {
             title: "Photograph a receipt",
             icon: "camera",
@@ -102,11 +124,6 @@ export default function PantryScreen() {
                 params: { kind: "pantry" },
               }),
           },
-          {
-            title: "Add an item",
-            icon: "edit",
-            onPress: () => router.push("/add-pantry"),
-          },
         ]}
       />
     </View>
@@ -114,22 +131,30 @@ export default function PantryScreen() {
 }
 export function InventoryScreen() {
   const { category } = useLocalSearchParams<{ category?: string }>();
-  const { pantry, loading, loaded, error, reload, deletePantryItem } = useKitchen();
+  const { pantry, loading, loaded, error, reload, deletePantryItem } =
+    useKitchen();
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const removing = useRef(false);
+  const { notify } = useFeedback();
+  const prepareRemoval = useRemovalMotion();
   const remove = async (id: string) => {
+    if (removing.current) return;
+    removing.current = true;
     setDeleting(true);
     setDeleteError("");
     try {
-      await deletePantryItem(id);
+      await deletePantryItem(id, prepareRemoval);
       setConfirmId(null);
+      notify("Item removed from your pantry");
     } catch (error) {
       setDeleteError(
         (error as Error).message ||
           "Could not delete this item. Please try again.",
       );
     } finally {
+      removing.current = false;
       setDeleting(false);
     }
   };
@@ -143,17 +168,22 @@ export function InventoryScreen() {
   return (
     <Page
       refreshControl={
-        <RefreshControl refreshing={loading} onRefresh={reload} />
+        <RefreshControl refreshing={loading && loaded} onRefresh={reload} />
       }
     >
       <Text style={s.title}>{category || "All the good things."}</Text>
-      <Field
+      <SearchField
         label="Find an item"
         placeholder="Search your pantry"
         value={search}
         onChangeText={setSearch}
       />
-      <DataNotice loading={loading} loaded={loaded} error={error} onRetry={() => void reload()} />
+      <DataNotice
+        loading={loading}
+        loaded={loaded}
+        error={error}
+        onRetry={() => void reload()}
+      />
       {!items.length && loaded && !loading && !search && (
         <Empty
           title="A little room to grow"
@@ -174,6 +204,8 @@ export function InventoryScreen() {
             </Text>
             <IconButton
               name="trash"
+              destructive
+              disabled={deleting}
               label={`Delete ${item.name}`}
               onPress={() => {
                 if (!deleting) {
@@ -205,8 +237,9 @@ export function InventoryScreen() {
               </Text>
               <ErrorText message={deleteError} />
               <Button
-                title={deleting ? "Deleting…" : "Delete item"}
-                disabled={deleting}
+                title="Delete item"
+                destructive
+                pending={deleting}
                 onPress={() => void remove(item.id)}
               />
               <Button

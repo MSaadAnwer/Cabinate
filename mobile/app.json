@@ -36,7 +36,8 @@
           "photosPermission": "Cabinate lets you choose receipt and meal photos.",
           "microphonePermission": false
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ]
   }
 }

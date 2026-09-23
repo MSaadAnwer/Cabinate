@@ -1,8 +1,16 @@
+import { Touch as Pressable } from "../components/feedback";
 import { useCallback, useState } from "react";
-import { Pressable, RefreshControl, Text, View } from "react-native";
+import { RefreshControl, Text, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { Icon, TomatoMark } from "../components/art";
-import { Button, Empty, ErrorText, Page, s } from "../components/ui";
+import {
+  Button,
+  DataNotice,
+  Empty,
+  ErrorText,
+  Page,
+  s,
+} from "../components/ui";
 import { useKitchen } from "../state/kitchen-store";
 import { daysUntil, expiryLabel } from "../utils/kitchen";
 import { ingestApi } from "../services/api";
@@ -10,7 +18,7 @@ import type { RawIngestPayload } from "../types/ingest";
 import { RecallNotices } from "../components/recall-feed";
 
 export function NotificationsScreen() {
-  const { pantry, loading, error, reload } = useKitchen();
+  const { pantry, loading, loaded, error, reload } = useKitchen();
   const items = pantry
     .filter(
       (item) => item.expirationDate && daysUntil(item.expirationDate) <= 7,
@@ -21,17 +29,22 @@ export function NotificationsScreen() {
   return (
     <Page
       refreshControl={
-        <RefreshControl refreshing={loading} onRefresh={reload} />
+        <RefreshControl refreshing={loading && loaded} onRefresh={reload} />
       }
     >
       <Text style={s.title}>A little heads-up.</Text>
       <Text style={s.eyebrow}>Use soon · next 7 days</Text>
-      <ErrorText message={error} />
+      <DataNotice
+        loading={loading}
+        loaded={loaded}
+        error={error}
+        onRetry={() => void reload()}
+      />
       {items.map((item) => (
         <Pressable
           key={item.id}
           accessibilityRole="button"
-          onPress={() => router.push("/inventory")}
+          onPress={() => router.push("/pantry/inventory")}
           style={[s.card, s.row]}
         >
           <Icon name="bell" color="#B56A53" />
@@ -56,7 +69,8 @@ export function NotificationsScreen() {
   );
 }
 export function AccountScreen() {
-  const { data, pantry, recipes } = useKitchen();
+  const { data, pantry, recipes, ready, loaded, loading, error, reload } =
+    useKitchen();
   return (
     <View style={{ flex: 1 }}>
       <Page>
@@ -75,12 +89,20 @@ export function AccountScreen() {
         <View style={s.card}>
           <Text style={s.eyebrow}>In your Cabinate</Text>
           <Text style={s.body}>
-            {pantry.length} pantry items · {recipes.length} recipes
+            {loaded ? pantry.length : "—"} pantry items ·{" "}
+            {loaded ? recipes.length : "—"} recipes
           </Text>
           <Text style={s.body}>
-            {data.lists.length} lists · {data.meals.length} meal photos
+            {ready ? data.lists.length : "—"} lists ·{" "}
+            {ready ? data.meals.length : "—"} meal photos
           </Text>
         </View>
+        <DataNotice
+          loading={loading}
+          loaded={loaded}
+          error={error}
+          onRetry={() => void reload()}
+        />
         <Button
           secondary
           title="Saved links & captures"
@@ -99,11 +121,13 @@ export function AccountScreen() {
 export function CapturesScreen() {
   const [items, setItems] = useState<RawIngestPayload[]>([]),
     [error, setError] = useState(""),
-    [loading, setLoading] = useState(true);
+    [loading, setLoading] = useState(true),
+    [loaded, setLoaded] = useState(false);
   const load = useCallback(async () => {
     setLoading(true);
     try {
       setItems(await ingestApi.getAll());
+      setLoaded(true);
       setError("");
     } catch (e) {
       setError((e as Error).message);
@@ -118,10 +142,18 @@ export function CapturesScreen() {
   );
   return (
     <Page
-      refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
+      refreshControl={
+        <RefreshControl refreshing={loading && loaded} onRefresh={load} />
+      }
     >
       <Text style={s.title}>Saved for later.</Text>
-      <ErrorText message={error} />
+      <DataNotice
+        loading={loading}
+        loaded={loaded}
+        error={error}
+        subject="your saved links"
+        onRetry={() => void load()}
+      />
       {items.map((item) => (
         <View key={item.id} style={s.card}>
           <Text style={s.eyebrow}>{item.source.replaceAll("_", " ")}</Text>
@@ -147,7 +179,7 @@ export function CapturesScreen() {
           )}
         </View>
       ))}
-      {!items.length && !loading && (
+      {!items.length && loaded && !loading && (
         <Empty
           title="Nothing saved yet"
           text="Paste a link from Pantry or Cookbook to keep it here."

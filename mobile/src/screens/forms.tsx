@@ -1,7 +1,10 @@
-import { useState } from "react";
-import { Image, Pressable, Text, View } from "react-native";
+import { useRef, useState } from "react";
+import { Image, Keyboard, Text, TextInput, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import { Button, ErrorText, Field, FormPage, s } from "../components/ui";
+import { Button, ErrorText, Field, FormPage, Touch, s } from "../components/ui";
+import { useFeedback } from "../components/feedback";
+import { useFormDraft } from "../components/form-draft";
+import DateField from "../components/date-field";
 import { pantryApi, recipeApi, ingestApi } from "../services/api";
 import { capturePhoto } from "../services/photos";
 import { useKitchen } from "../state/kitchen-store";
@@ -16,29 +19,53 @@ import {
 export function AddPantryScreen() {
   const params = useLocalSearchParams<{ category?: string }>();
   const { setPantry } = useKitchen();
+  const { notify } = useFeedback();
   const [name, setName] = useState(""),
     [quantity, setQuantity] = useState("1"),
     [unit, setUnit] = useState("pcs");
   const [category, setCategory] = useState(params.category || ""),
     [date, setDate] = useState(""),
     [location, setLocation] = useState("CABINET");
-  const [error, setError] = useState(""),
+  const [details, setDetails] = useState(false),
+    [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const saving = useRef(false);
+  const nameInput = useRef<TextInput>(null),
+    quantityInput = useRef<TextInput>(null),
+    unitInput = useRef<TextInput>(null);
+  const draft = useFormDraft(
+    !!name ||
+      quantity !== "1" ||
+      unit !== "pcs" ||
+      category !== (params.category || "") ||
+      !!date ||
+      location !== "CABINET",
+    busy,
+  );
   const save = async () => {
-    if (!name.trim() || !unit.trim()) {
-      setError("Add an item name and unit.");
+    if (saving.current) return;
+    const invalid: Record<string, string> = {};
+    if (!name.trim()) invalid.name = "Give this item a name.";
+    if (!unit.trim()) invalid.unit = "Add a unit, such as pcs, g or ml.";
+    if (!Number.isFinite(Number(quantity)) || Number(quantity) <= 0)
+      invalid.quantity = "Use a quantity greater than zero.";
+    if (date && !validDate(date))
+      invalid.date = "Choose a valid expiration date.";
+    setErrors(invalid);
+    if (Object.keys(invalid).length) {
+      (invalid.name
+        ? nameInput
+        : invalid.quantity
+          ? quantityInput
+          : unitInput
+      ).current?.focus();
       return;
     }
-    if (!Number.isFinite(Number(quantity)) || Number(quantity) <= 0) {
-      setError("Quantity must be greater than zero.");
-      return;
-    }
-    if (date && !validDate(date)) {
-      setError("Use a real date in YYYY-MM-DD format.");
-      return;
-    }
+    saving.current = true;
     setBusy(true);
     setError("");
+    Keyboard.dismiss();
     try {
       const item = await pantryApi.create({
         name: name.trim(),
@@ -49,121 +76,209 @@ export function AddPantryScreen() {
         expirationDate: date || undefined,
       });
       setPantry((previous) => [item, ...previous]);
-      router.back();
+      notify("Added to your pantry");
+      draft.finish(() =>
+        router.canGoBack() ? router.back() : router.replace("/pantry"),
+      );
     } catch (e) {
       setError((e as Error).message);
     } finally {
+      saving.current = false;
       setBusy(false);
     }
   };
   return (
-    <FormPage>
+    <FormPage
+      footer={
+        <>
+          <ErrorText message={error} />
+          <Button
+            title="Add to pantry"
+            pending={busy}
+            onPress={() => void save()}
+          />
+        </>
+      }
+    >
+      {draft.guard}
       <Text style={s.title}>Something fresh.</Text>
       <Field
+        inputRef={nameInput}
+        onNext={() => quantityInput.current?.focus()}
+        autoFocus
         label="Item name"
         placeholder="Whole milk"
         value={name}
-        onChangeText={setName}
+        onChangeText={(value) => {
+          setName(value);
+          setErrors((previous) => ({ ...previous, name: "" }));
+        }}
+        error={errors.name}
+        editable={!busy}
         maxLength={120}
+        returnKeyType="next"
+        onSubmitEditing={() => quantityInput.current?.focus()}
       />
       <View style={s.row}>
         <View style={{ flex: 1 }}>
           <Field
+            inputRef={quantityInput}
+            onNext={() => unitInput.current?.focus()}
             label="Quantity"
             keyboardType="decimal-pad"
             value={quantity}
-            onChangeText={setQuantity}
+            onChangeText={(value) => {
+              setQuantity(value);
+              setErrors((previous) => ({ ...previous, quantity: "" }));
+            }}
+            error={errors.quantity}
+            editable={!busy}
+            returnKeyType="next"
+            onSubmitEditing={() => unitInput.current?.focus()}
           />
         </View>
         <View style={{ flex: 1 }}>
           <Field
+            inputRef={unitInput}
             label="Unit"
             placeholder="pcs, g, ml…"
             value={unit}
-            onChangeText={setUnit}
+            onChangeText={(value) => {
+              setUnit(value);
+              setErrors((previous) => ({ ...previous, unit: "" }));
+            }}
+            error={errors.unit}
+            editable={!busy}
+            returnKeyType="done"
+            onSubmitEditing={Keyboard.dismiss}
           />
         </View>
       </View>
-      <Text style={s.muted}>Category</Text>
-      <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-        {categories.map((value) => (
-          <Pressable
-            key={value}
-            accessibilityRole="button"
-            accessibilityState={{
-              selected: (category || categoryFor(name)) === value,
-            }}
-            onPress={() => setCategory(value)}
-            style={[
-              s.chip,
-              {
-                backgroundColor:
-                  (category || categoryFor(name)) === value
-                    ? "#E1E8CE"
-                    : "transparent",
-              },
-            ]}
-          >
-            <Text style={s.body}>{value}</Text>
-          </Pressable>
-        ))}
-      </View>
-      <Field
-        label="Expiration · optional"
-        placeholder="YYYY-MM-DD"
+      <DateField
         value={date}
-        onChangeText={setDate}
-        keyboardType="numbers-and-punctuation"
-        maxLength={10}
-      />
-      <Text style={s.muted}>Keep it in the…</Text>
-      <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-        {["FRIDGE", "FREEZER", "CABINET", "COUNTER"].map((value) => (
-          <Pressable
-            key={value}
-            accessibilityRole="button"
-            onPress={() => setLocation(value)}
-            style={[
-              s.chip,
-              {
-                backgroundColor: location === value ? "#E1E8CE" : "transparent",
-              },
-            ]}
-          >
-            <Text style={s.body}>{value.toLowerCase()}</Text>
-          </Pressable>
-        ))}
-      </View>
-      <ErrorText message={error} />
-      <Button
-        title={busy ? "Adding…" : "Add to pantry"}
+        onChange={(value) => {
+          setDate(value);
+          setErrors((previous) => ({ ...previous, date: "" }));
+        }}
+        error={errors.date}
         disabled={busy}
-        onPress={() => void save()}
       />
+      <Touch
+        accessibilityState={{ expanded: details }}
+        disabled={busy}
+        onPress={() => {
+          Keyboard.dismiss();
+          setDetails(!details);
+        }}
+        style={[s.card, { padding: 16 }]}
+      >
+        <Text style={s.body}>
+          {details ? "Hide storage details" : "Category & storage"}
+        </Text>
+        <Text style={s.muted}>
+          {category || categoryFor(name)} · {location.toLowerCase()}
+        </Text>
+      </Touch>
+      {details && (
+        <>
+          <Text style={s.body}>Category</Text>
+          <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+            {categories.map((value) => (
+              <Touch
+                key={value}
+                disabled={busy}
+                accessibilityState={{
+                  selected: (category || categoryFor(name)) === value,
+                }}
+                onPress={() => setCategory(value)}
+                style={[
+                  s.chip,
+                  {
+                    backgroundColor:
+                      (category || categoryFor(name)) === value
+                        ? "#E1E8CE"
+                        : "transparent",
+                  },
+                ]}
+              >
+                <Text style={s.body}>{value}</Text>
+              </Touch>
+            ))}
+          </View>
+          <Text style={s.body}>Keep it in the…</Text>
+          <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+            {["FRIDGE", "FREEZER", "CABINET", "COUNTER"].map((value) => (
+              <Touch
+                key={value}
+                disabled={busy}
+                accessibilityState={{ selected: location === value }}
+                onPress={() => setLocation(value)}
+                style={[
+                  s.chip,
+                  {
+                    backgroundColor:
+                      location === value ? "#E1E8CE" : "transparent",
+                  },
+                ]}
+              >
+                <Text style={s.body}>{value.toLowerCase()}</Text>
+              </Touch>
+            ))}
+          </View>
+        </>
+      )}
     </FormPage>
   );
 }
+
 export function AddRecipeScreen() {
   const { sourceUrl = "" } = useLocalSearchParams<{ sourceUrl?: string }>();
   const { setRecipes } = useKitchen();
+  const { notify } = useFeedback();
   const [title, setTitle] = useState(""),
     [description, setDescription] = useState(""),
     [ingredients, setIngredients] = useState(""),
     [steps, setSteps] = useState(""),
     [servings, setServings] = useState("2");
-  const [error, setError] = useState(""),
+  const [details, setDetails] = useState(false),
+    [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const saving = useRef(false);
+  const titleInput = useRef<TextInput>(null),
+    ingredientsInput = useRef<TextInput>(null),
+    stepsInput = useRef<TextInput>(null),
+    servingsInput = useRef<TextInput>(null);
+  const draft = useFormDraft(
+    !!title || !!description || !!ingredients || !!steps || servings !== "2",
+    busy,
+  );
   const save = async () => {
-    if (!title.trim() || !ingredients.trim() || !steps.trim()) {
-      setError("Add a title, ingredients, and cooking steps.");
+    if (saving.current) return;
+    const invalid: Record<string, string> = {};
+    if (!title.trim()) invalid.title = "Give your recipe a title.";
+    if (!ingredients.trim())
+      invalid.ingredients = "Add at least one ingredient.";
+    if (!steps.trim()) invalid.steps = "Add the cooking steps.";
+    if (!Number.isInteger(Number(servings)) || Number(servings) < 1)
+      invalid.servings = "Use a whole number of at least 1.";
+    setErrors(invalid);
+    if (Object.keys(invalid).length) {
+      if (invalid.servings) setDetails(true);
+      (invalid.title
+        ? titleInput
+        : invalid.ingredients
+          ? ingredientsInput
+          : invalid.steps
+            ? stepsInput
+            : servingsInput
+      ).current?.focus();
       return;
     }
-    if (!Number.isInteger(Number(servings)) || Number(servings) < 1) {
-      setError("Servings must be a whole number of at least 1.");
-      return;
-    }
+    saving.current = true;
     setBusy(true);
     setError("");
+    Keyboard.dismiss();
     try {
       const item = await recipeApi.create({
         title: title.trim(),
@@ -183,15 +298,34 @@ export function AddRecipeScreen() {
           .join("\n")}`,
       });
       setRecipes((previous) => [item, ...previous]);
-      router.replace({ pathname: "/recipe-detail", params: { id: item.id } });
+      notify("Saved to your cookbook");
+      draft.finish(() =>
+        router.dismissTo({
+          pathname: "/cookbook/recipe",
+          params: { id: item.id },
+        }),
+      );
     } catch (e) {
       setError((e as Error).message);
     } finally {
+      saving.current = false;
       setBusy(false);
     }
   };
   return (
-    <FormPage>
+    <FormPage
+      footer={
+        <>
+          <ErrorText message={error} />
+          <Button
+            title="Save recipe"
+            pending={busy}
+            onPress={() => void save()}
+          />
+        </>
+      }
+    >
+      {draft.guard}
       <Text style={s.title}>A keeper for your cookbook.</Text>
       {!!sourceUrl && (
         <Text selectable style={s.muted}>
@@ -199,54 +333,97 @@ export function AddRecipeScreen() {
         </Text>
       )}
       <Field
+        inputRef={titleInput}
+        autoFocus
         label="Recipe title"
         placeholder="Sunday’s tomato pasta"
         value={title}
-        onChangeText={setTitle}
+        onChangeText={(value) => {
+          setTitle(value);
+          setErrors((previous) => ({ ...previous, title: "" }));
+        }}
+        error={errors.title}
+        editable={!busy}
         maxLength={120}
+        returnKeyType="next"
+        onSubmitEditing={() => ingredientsInput.current?.focus()}
       />
       <Field
-        label="A little note · optional"
-        placeholder="Why you love it"
-        value={description}
-        onChangeText={setDescription}
-      />
-      <Field
-        label="Servings"
-        keyboardType="number-pad"
-        value={servings}
-        onChangeText={setServings}
-      />
-      <Field
+        inputRef={ingredientsInput}
         label="Ingredients · one per line"
         placeholder={"200 g pasta\n3 tomatoes\n2 tbsp olive oil"}
         multiline
         value={ingredients}
-        onChangeText={setIngredients}
+        onChangeText={(value) => {
+          setIngredients(value);
+          setErrors((previous) => ({ ...previous, ingredients: "" }));
+        }}
+        error={errors.ingredients}
+        editable={!busy}
       />
       <Field
+        inputRef={stepsInput}
         label="Cooking steps · one per line"
         placeholder={"Bring a pot of water to a boil.\nChop the tomatoes."}
         multiline
         value={steps}
-        onChangeText={setSteps}
+        onChangeText={(value) => {
+          setSteps(value);
+          setErrors((previous) => ({ ...previous, steps: "" }));
+        }}
+        error={errors.steps}
+        editable={!busy}
       />
-      <ErrorText message={error} />
-      <Button
-        title={busy ? "Saving…" : "Save recipe"}
+      <Touch
+        accessibilityState={{ expanded: details }}
         disabled={busy}
-        onPress={() => void save()}
-      />
+        onPress={() => setDetails(!details)}
+        style={[s.card, { padding: 16 }]}
+      >
+        <Text style={s.body}>
+          {details ? "Hide recipe details" : "Servings & a little note"}
+        </Text>
+        <Text style={s.muted}>Serves {servings}</Text>
+      </Touch>
+      {details && (
+        <>
+          <Field
+            inputRef={servingsInput}
+            label="Servings"
+            keyboardType="number-pad"
+            value={servings}
+            onChangeText={(value) => {
+              setServings(value);
+              setErrors((previous) => ({ ...previous, servings: "" }));
+            }}
+            error={errors.servings}
+            editable={!busy}
+          />
+          <Field
+            label="A little note · optional"
+            placeholder="Why you love it"
+            value={description}
+            onChangeText={setDescription}
+            editable={!busy}
+            returnKeyType="done"
+            onSubmitEditing={Keyboard.dismiss}
+          />
+        </>
+      )}
     </FormPage>
   );
 }
+
 export function CaptureLinkScreen() {
   const { kind } = useLocalSearchParams<{ kind?: string }>();
   const isRecipe = kind !== "pantry";
+  const { notify } = useFeedback();
   const [url, setUrl] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [saved, setSaved] = useState(false);
+  const saving = useRef(false);
+  const draft = useFormDraft(!!url && !saved, busy);
   const validate = () => {
     try {
       const link = new URL(url.trim());
@@ -258,9 +435,11 @@ export function CaptureLinkScreen() {
     }
   };
   const save = async () => {
-    if (!validate()) return;
+    if (saving.current || saved || !validate()) return;
+    saving.current = true;
     setBusy(true);
     setError("");
+    Keyboard.dismiss();
     try {
       await ingestApi.ingest({
         source: isRecipe ? "SOCIAL_LINK" : "PRODUCT_LINK",
@@ -270,73 +449,101 @@ export function CaptureLinkScreen() {
         metadata: { client: "cabinate-mobile", automaticExtraction: false },
       });
       setSaved(true);
+      notify("Link saved");
     } catch (e) {
       setError((e as Error).message);
     } finally {
+      saving.current = false;
       setBusy(false);
     }
   };
   return (
-    <FormPage>
+    <FormPage
+      footer={
+        <Button
+          title={saved ? "Link saved" : "Save link for later"}
+          pending={busy}
+          disabled={saved}
+          icon={saved ? "check" : undefined}
+          onPress={() => void save()}
+        />
+      }
+    >
+      {draft.guard}
       <Text style={s.title}>
         {isRecipe ? "Found something delicious?" : "Keep that product handy."}
       </Text>
       <Text style={s.body}>
         {isRecipe
-          ? "Save a link from Instagram, TikTok, or YouTube. Add its ingredients and steps by hand to turn it into a recipe."
+          ? "Save a video link for later, or add its ingredients and steps by hand."
           : "Save a product link, then add its details to your pantry by hand."}
       </Text>
       <Field
+        autoFocus
         label={isRecipe ? "Video link" : "Product link"}
         placeholder="https://…"
         autoCapitalize="none"
+        autoCorrect={false}
         keyboardType="url"
+        returnKeyType="done"
+        onSubmitEditing={() => void save()}
+        editable={!busy}
         value={url}
         onChangeText={(value) => {
           setUrl(value);
           setSaved(false);
+          setError("");
         }}
+        error={error}
       />
       <Text style={s.muted}>
-        Automatic extraction is coming later. Saving a link keeps it in your
-        capture inbox; it won’t create inventory or recipe details
-        automatically.
+        Saving a link keeps it in your capture inbox. Automatic extraction is
+        coming later.
       </Text>
-      <ErrorText message={error} />
-      <Button
-        title={saved ? "Link saved" : busy ? "Saving…" : "Save link for later"}
-        disabled={busy || saved}
-        onPress={() => void save()}
-      />
       {saved && (
-        <Button
-          secondary
-          title="View saved links"
-          onPress={() => router.push("/captures")}
-        />
+        <>
+          <Text accessibilityLiveRegion="polite" style={s.body}>
+            Your link is saved in the capture inbox.
+          </Text>
+          <Button
+            secondary
+            title="View saved links"
+            onPress={() => router.dismissTo("/captures")}
+          />
+        </>
       )}
       <Button
         secondary
+        disabled={busy}
         title={isRecipe ? "Add the recipe details" : "Add the item manually"}
         onPress={() => {
-          if (validate())
-            router.push(
-              isRecipe
-                ? { pathname: "/add-recipe", params: { sourceUrl: url.trim() } }
-                : "/add-pantry",
+          if (!validate()) return;
+          if (isRecipe)
+            draft.finish(() =>
+              router.replace({
+                pathname: "/add-recipe",
+                params: { sourceUrl: url.trim() },
+              }),
             );
+          else router.push("/add-pantry");
         }}
       />
     </FormPage>
   );
 }
+
 export function ReceiptScreen() {
   const { data, update, ready } = useKitchen();
+  const { notify } = useFeedback();
   const [uri, setUri] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [saved, setSaved] = useState(false);
+  const saving = useRef(false);
+  const draft = useFormDraft(!!uri && !saved, busy);
   const pick = async (library: boolean) => {
+    if (saving.current) return;
+    saving.current = true;
     setBusy(true);
     setError("");
     try {
@@ -348,11 +555,15 @@ export function ReceiptScreen() {
     } catch (e) {
       setError((e as Error).message);
     } finally {
+      saving.current = false;
       setBusy(false);
     }
   };
   const save = async () => {
+    if (saving.current || saved || !uri || !ready) return;
+    saving.current = true;
     setBusy(true);
+    setError("");
     try {
       await update((previous) => ({
         ...previous,
@@ -362,14 +573,32 @@ export function ReceiptScreen() {
         ],
       }));
       setSaved(true);
+      notify("Receipt saved");
     } catch (e) {
       setError((e as Error).message);
     } finally {
+      saving.current = false;
       setBusy(false);
     }
   };
   return (
-    <FormPage>
+    <FormPage
+      footer={
+        uri ? (
+          <>
+            <ErrorText message={error} />
+            <Button
+              title={saved ? "Receipt saved" : "Save receipt on this device"}
+              pending={busy}
+              disabled={saved || !ready}
+              icon={saved ? "check" : undefined}
+              onPress={() => void save()}
+            />
+          </>
+        ) : undefined
+      }
+    >
+      {draft.guard}
       <Text style={s.title}>Bring the shop home.</Text>
       <Text style={s.body}>
         Photograph a receipt and keep it handy while you add your purchases.
@@ -386,6 +615,7 @@ export function ReceiptScreen() {
         disabled={busy}
         onPress={() => void pick(true)}
       />
+      {!uri && <ErrorText message={error} />}
       {!!uri && (
         <>
           <Image
@@ -399,19 +629,19 @@ export function ReceiptScreen() {
               borderRadius: 16,
             }}
           />
-          <Button
-            title={saved ? "Receipt saved" : "Save receipt on this device"}
-            disabled={busy || saved || !ready}
-            onPress={() => void save()}
-          />
+          {saved && (
+            <Text accessibilityLiveRegion="polite" style={s.body}>
+              Your receipt is saved on this device.
+            </Text>
+          )}
           <Button
             secondary
             title="Add a purchased item"
+            disabled={busy}
             onPress={() => router.push("/add-pantry")}
           />
         </>
       )}
-      <ErrorText message={error} />
       <Text style={s.muted}>
         Automatic receipt reading is coming later. Review the image and add each
         item manually for now.
@@ -420,9 +650,9 @@ export function ReceiptScreen() {
         <Text style={s.heading}>Saved receipts</Text>
       )}
       {data.receipts.map((receipt) => (
-        <Pressable
-          accessibilityRole="button"
+        <Touch
           accessibilityLabel={`Open receipt from ${receipt.date}`}
+          disabled={busy}
           key={receipt.id}
           style={[s.card, s.row]}
           onPress={() => {
@@ -435,7 +665,7 @@ export function ReceiptScreen() {
             style={{ width: 55, height: 65, borderRadius: 8 }}
           />
           <Text style={s.body}>{receipt.date}</Text>
-        </Pressable>
+        </Touch>
       ))}
     </FormPage>
   );

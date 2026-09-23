@@ -14,16 +14,27 @@ export default function TabLayout() {
   return (
     <Tabs
       initialRouteName="lists"
+      backBehavior="history"
       screenOptions={{
+        headerShown: false,
+        animation: "none",
         headerStyle: { backgroundColor: colors.cream },
         headerTintColor: colors.ink,
         headerShadowVisible: false,
         headerTitleStyle: { fontFamily: "Georgia" },
         headerLeft: () => (
-          <IconButton name="back" label="Back to home" onPress={() => router.dismissTo("/")} />
+          <IconButton
+            name="back"
+            label="Back to home"
+            onPress={() => router.dismissTo("/")}
+          />
         ),
         headerRight: () => (
-          <IconButton name="calendar" label="Meal calendar" onPress={() => router.push("/calendar")} />
+          <IconButton
+            name="calendar"
+            label="Meal calendar"
+            onPress={() => router.push("/calendar")}
+          />
         ),
         sceneStyle: { backgroundColor: colors.cream },
         tabBarStyle: {
@@ -45,15 +56,21 @@ export default function TabLayout() {
           options={{
             title: section.title,
             tabBarIcon: ({ focused }) => (
-              <View style={{
-                width: 36,
-                height: 30,
-                borderRadius: 15,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: focused ? "#E6EBD9" : "transparent",
-              }}>
-                <Icon name={section.icon} size={22} color={focused ? colors.ink : colors.muted} />
+              <View
+                style={{
+                  width: 36,
+                  height: 30,
+                  borderRadius: 15,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: focused ? "#E6EBD9" : "transparent",
+                }}
+              >
+                <Icon
+                  name={section.icon}
+                  size={22}
+                  color={focused ? colors.ink : colors.muted}
+                />
               </View>
             ),
             tabBarAccessibilityLabel: section.title,

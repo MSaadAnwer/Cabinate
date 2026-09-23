@@ -1,8 +1,10 @@
 import Svg, { Circle, Ellipse, G, Path, Rect } from "react-native-svg";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import { categoryColors, type Category, categories } from "../utils/kitchen";
 
 export type IconName =
+  | "search"
+  | "more"
   | "home"
   | "pantry"
   | "bell"
@@ -21,6 +23,8 @@ export type IconName =
   | "chevron"
   | "trash";
 const iconPaths: Record<IconName, string> = {
+  search: "M21 21l-5-5M18 10a8 8 0 1 0-16 0 8 8 0 0 0 16 0",
+  more: "M6 12a1 1 0 1 0-2 0 1 1 0 0 0 2 0M13 12a1 1 0 1 0-2 0 1 1 0 0 0 2 0M20 12a1 1 0 1 0-2 0 1 1 0 0 0 2 0",
   home: "M3 11l9-8 9 8M5 10v11h14V10M9 21v-7h6v7",
   pantry: "M4 3h16v18H4zM4 10h16M8 6v1M8 14v3",
   bell: "M5 17h14l-2-3V9a5 5 0 0 0-10 0v5l-2 3M10 21h4M12 2v2",
@@ -51,6 +55,13 @@ export function Icon({
 }) {
   return (
     <Svg
+      {...(Platform.OS === "web"
+        ? { "aria-hidden": true }
+        : {
+            accessible: false,
+            accessibilityElementsHidden: true,
+            importantForAccessibility: "no-hide-descendants" as const,
+          })}
       width={size}
       height={size}
       viewBox="-1 -1 26 26"

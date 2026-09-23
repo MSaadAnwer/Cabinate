@@ -1,8 +1,11 @@
-import { useState } from "react";
-import { Alert, Image, Pressable, Text, View } from "react-native";
+import { Touch as Pressable, useFeedback } from "../components/feedback";
+import { useFormDraft } from "../components/form-draft";
+import { useRef, useState } from "react";
+import { Alert, Image, Text, View } from "react-native";
 import {
   Button,
   ErrorText,
+  DataNotice,
   Field,
   FormPage,
   IconButton,
@@ -13,7 +16,16 @@ import { capturePhoto } from "../services/photos";
 import { expiryLabel, localDate, newId } from "../utils/kitchen";
 
 export default function CalendarScreen() {
-  const { pantry, data, update, ready } = useKitchen();
+  const {
+    pantry,
+    data,
+    update,
+    ready,
+    loaded,
+    loading,
+    error: apiError,
+    reload,
+  } = useKitchen();
   const [month, setMonth] = useState(
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   );
@@ -22,6 +34,9 @@ export default function CalendarScreen() {
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const today = localDate();
+  const saving = useRef(false);
+  const { notify } = useFeedback();
+  const draft = useFormDraft(!!caption, busy);
   const count = new Date(
     month.getFullYear(),
     month.getMonth() + 1,
@@ -41,6 +56,8 @@ export default function CalendarScreen() {
   const photos = data.meals.filter((meal) => meal.date === selected),
     expiring = pantry.filter((item) => item.expirationDate === selected);
   const pick = async (library: boolean) => {
+    if (saving.current || !ready) return;
+    saving.current = true;
     setBusy(true);
     setError("");
     try {
@@ -59,10 +76,12 @@ export default function CalendarScreen() {
           ],
         }));
         setCaption("");
+        notify("Meal photo saved");
       }
     } catch (e) {
       setError((e as Error).message);
     } finally {
+      saving.current = false;
       setBusy(false);
     }
   };
@@ -73,12 +92,14 @@ export default function CalendarScreen() {
   };
   return (
     <FormPage>
+      {draft.guard}
       <Text style={s.eyebrow}>Your kitchen, day by day</Text>
       <Text style={s.title}>Little moments.{"\n"}Lovely meals.</Text>
       <View style={s.row}>
         <IconButton
           name="back"
           label="Previous month"
+          disabled={busy}
           onPress={() => changeMonth(-1)}
         />
         <Text
@@ -92,10 +113,11 @@ export default function CalendarScreen() {
         <IconButton
           name="chevron"
           label="Next month"
+          disabled={busy}
           onPress={() => changeMonth(1)}
         />
       </View>
-      <View style={{ flexDirection: "row" }}>
+      <View style={{ flexDirection: "row", marginHorizontal: -18 }}>
         {["S", "M", "T", "W", "T", "F", "S"].map((day, index) => (
           <Text
             key={index}
@@ -105,7 +127,14 @@ export default function CalendarScreen() {
           </Text>
         ))}
       </View>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", rowGap: 8 }}>
+      <View
+        style={{
+          flexDirection: "row",
+          flexWrap: "wrap",
+          rowGap: 8,
+          marginHorizontal: -18,
+        }}
+      >
         {cells.map((date, index) => {
           const photo = date && data.meals.find((meal) => meal.date === date);
           const expiration =
@@ -113,6 +142,7 @@ export default function CalendarScreen() {
           return date ? (
             <Pressable
               key={date}
+              disabled={busy}
               accessibilityRole="button"
               accessibilityState={{ selected: selected === date }}
               accessibilityLabel={`${date}${photo ? ", meal photo" : ""}${expiration ? ", food expiration" : ""}`}
@@ -193,7 +223,13 @@ export default function CalendarScreen() {
           </Text>
         </View>
       ))}
-      {!expiring.length && (
+      <DataNotice
+        loading={loading}
+        loaded={loaded}
+        error={apiError}
+        onRetry={() => void reload()}
+      />
+      {!expiring.length && loaded && (
         <Text style={s.muted}>
           No pantry expirations recorded for this day.
         </Text>
@@ -241,6 +277,7 @@ export default function CalendarScreen() {
             label="A note for your meal · optional"
             placeholder="Tuesday’s very good pasta"
             value={caption}
+            editable={!busy}
             onChangeText={setCaption}
           />
           {selected === today && (

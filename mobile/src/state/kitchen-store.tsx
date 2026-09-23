@@ -1,3 +1,4 @@
+import { createOrderedStore } from "../utils/ordered-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   createContext,
@@ -49,26 +50,36 @@ function useStore() {
   const [pantry, setPantry] = useState<PantryItem[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [data, setData] = useState<LocalData>(empty);
-  const current = useRef(data);
-  const persisted = useRef(data);
-  const revision = useRef(0);
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
   const [storageError, setStorageError] = useState("");
-  const queue = useRef(Promise.resolve());
+  const persistence = useRef<ReturnType<
+    typeof createOrderedStore<LocalData>
+  > | null>(null);
+  if (!persistence.current)
+    persistence.current = createOrderedStore(
+      empty,
+      (value) => AsyncStorage.setItem(key, JSON.stringify(value)),
+      setData,
+      setStorageError,
+    );
   const deletedPantryIds = useRef(new Set<string>());
-  const deletePantryItem = useCallback(async (id: string) => {
-    try {
-      await pantryApi.delete(id);
-    } catch (error) {
-      if ((error as { status?: number }).status !== 404) throw error;
-    }
-    // Also filter late refresh responses, so a deleted expiration cannot reappear.
-    deletedPantryIds.current.add(id);
-    setPantry((previous) => previous.filter((item) => item.id !== id));
-  }, []);
+  const deletePantryItem = useCallback(
+    async (id: string, beforeRemove?: () => void) => {
+      try {
+        await pantryApi.delete(id);
+      } catch (error) {
+        if ((error as { status?: number }).status !== 404) throw error;
+      }
+      // Also filter late refresh responses, so a deleted expiration cannot reappear.
+      deletedPantryIds.current.add(id);
+      beforeRemove?.();
+      setPantry((previous) => previous.filter((item) => item.id !== id));
+    },
+    [],
+  );
   const reload = useCallback(async () => {
     setLoading(true);
     try {
@@ -101,9 +112,7 @@ function useStore() {
             typeof parsed.steps !== "object"
           )
             throw new Error("Invalid saved data");
-          current.current = parsed;
-          persisted.current = parsed;
-          setData(parsed);
+          persistence.current!.hydrate(parsed);
         }
         setReady(true);
       })
@@ -113,29 +122,13 @@ function useStore() {
         ),
       );
   }, [reload]);
-  // Publish changes immediately, but write snapshots in order. A failed latest
-  // write rolls back; a later successful snapshot already includes that change.
   const update = useCallback(
     (change: (previous: LocalData) => LocalData): Promise<void> => {
-      if (!ready) return Promise.reject(new Error("Your saved data is still loading. Please try again."));
-      const next = change(current.current);
-      const id = ++revision.current;
-      current.current = next;
-      setData(next);
-      const task = queue.current.then(async () => {
-        await AsyncStorage.setItem(key, JSON.stringify(next));
-        persisted.current = next;
-        setStorageError("");
-      }).catch((error) => {
-        if (revision.current === id) {
-          current.current = persisted.current;
-          setData(persisted.current);
-        }
-        setStorageError("Could not save your last change. Please try again.");
-        throw error;
-      });
-      queue.current = task.catch(() => {});
-      return task;
+      if (!ready)
+        return Promise.reject(
+          new Error("Your saved data is still loading. Please try again."),
+        );
+      return persistence.current!.update(change);
     },
     [ready],
   );

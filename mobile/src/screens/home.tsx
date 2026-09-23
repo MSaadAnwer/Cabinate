@@ -1,4 +1,5 @@
-import { Pressable, Text, View } from "react-native";
+import { Touch as Pressable } from "../components/feedback";
+import { Text, View } from "react-native";
 import { router } from "expo-router";
 import { FarmArt, Icon, TomatoMark, TomatoSegments } from "../components/art";
 import { Page, s } from "../components/ui";

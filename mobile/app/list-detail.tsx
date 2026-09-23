@@ -1,1 +1,5 @@
-export { ListDetailScreen as default } from "../src/screens/lists";
+import { Redirect, useLocalSearchParams } from "expo-router";
+export default function LegacyRoute() {
+  const params = useLocalSearchParams();
+  return <Redirect href={{ pathname: "/lists/detail", params }} />;
+}

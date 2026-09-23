@@ -58,7 +58,7 @@ async function request<T>(
     throw {
       status: 0,
       error: "Network Error",
-      message: `Unable to connect to Cabinate API at ${BASE_URL}.`,
+      message: "Could not connect to Cabinate. Check your connection and try again.",
     } satisfies ApiErrorResponse;
   }
 }

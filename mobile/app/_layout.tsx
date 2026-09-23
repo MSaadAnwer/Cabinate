@@ -1,3 +1,4 @@
+import { FeedbackProvider, useFeedback } from "../src/components/feedback";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Text, View } from "react-native";
@@ -8,12 +9,15 @@ import { TomatoMark } from "../src/components/art";
 export default function Layout() {
   return (
     <KitchenProvider>
-      <Navigator />
+      <FeedbackProvider>
+        <Navigator />
+      </FeedbackProvider>
     </KitchenProvider>
   );
 }
 function Navigator() {
   const { storageError } = useKitchen();
+  const { reduceMotion } = useFeedback();
   return (
     <View style={{ flex: 1 }}>
       <StatusBar style="dark" />
@@ -28,6 +32,7 @@ function Navigator() {
       )}
       <Stack
         screenOptions={{
+          animation: reduceMotion ? "none" : "default",
           contentStyle: { backgroundColor: colors.cream },
           headerStyle: { backgroundColor: colors.cream },
           headerTintColor: colors.ink,
@@ -80,17 +85,14 @@ function Navigator() {
             ),
           }}
         />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: "none" }} />
-        <Stack.Screen name="inventory" options={{ title: "Pantry items", headerLeft: () => (
-          <IconButton name="back" label="Back to pantry" onPress={() => router.canGoBack() ? router.back() : router.replace("/pantry")} />
-        ) }} />
+        <Stack.Screen
+          name="(tabs)"
+          options={{ title: "Kitchen", headerShown: false, animation: "none" }}
+        />
+        <Stack.Screen name="inventory" options={{ headerShown: false }} />
         <Stack.Screen name="recalls" options={{ title: "Recalls" }} />
-        <Stack.Screen name="list-detail" options={{ title: "Grocery list", headerLeft: () => (
-          <IconButton name="back" label="Back to lists" onPress={() => router.canGoBack() ? router.back() : router.replace("/lists")} />
-        ) }} />
-        <Stack.Screen name="recipe-detail" options={{ title: "Recipe", headerLeft: () => (
-          <IconButton name="back" label="Back to cookbook" onPress={() => router.canGoBack() ? router.back() : router.replace("/cookbook")} />
-        ) }} />
+        <Stack.Screen name="list-detail" options={{ headerShown: false }} />
+        <Stack.Screen name="recipe-detail" options={{ headerShown: false }} />
         <Stack.Screen name="calendar" options={{ title: "Kitchen calendar" }} />
         <Stack.Screen
           name="notifications"
@@ -114,6 +116,7 @@ function Navigator() {
             name={name}
             options={{
               presentation: "modal",
+              headerBackVisible: false,
               title: (
                 {
                   "add-pantry": "Add an item",
@@ -128,7 +131,9 @@ function Navigator() {
                 <IconButton
                   name="close"
                   label="Close form"
-                  onPress={() => router.back()}
+                  onPress={() =>
+                    router.canGoBack() ? router.back() : router.replace("/")
+                  }
                 />
               ),
             }}
