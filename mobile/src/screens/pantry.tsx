@@ -27,7 +27,11 @@ import {
 } from "../utils/kitchen";
 
 export default function PantryScreen() {
-  const { pantry, error, loading, loaded, reload } = useKitchen();
+  const {
+    pantry,
+    pantryState: { error, loading, loaded },
+    reload,
+  } = useKitchen();
   return (
     <View style={{ flex: 1 }}>
       <Page
@@ -131,8 +135,12 @@ export default function PantryScreen() {
 }
 export function InventoryScreen() {
   const { category } = useLocalSearchParams<{ category?: string }>();
-  const { pantry, loading, loaded, error, reload, deletePantryItem } =
-    useKitchen();
+  const {
+    pantry,
+    pantryState: { loading, loaded, error },
+    reload,
+    deletePantryItem,
+  } = useKitchen();
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");

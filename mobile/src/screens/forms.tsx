@@ -1,7 +1,15 @@
 import { useRef, useState } from "react";
 import { Image, Keyboard, Text, TextInput, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import { Button, ErrorText, Field, FormPage, Touch, s } from "../components/ui";
+import {
+  Button,
+  ErrorText,
+  Field,
+  FormPage,
+  Sheet,
+  Touch,
+  s,
+} from "../components/ui";
 import { useFeedback } from "../components/feedback";
 import { useFormDraft } from "../components/form-draft";
 import DateField from "../components/date-field";
@@ -18,7 +26,7 @@ import {
 
 export function AddPantryScreen() {
   const params = useLocalSearchParams<{ category?: string }>();
-  const { setPantry } = useKitchen();
+  const { upsertPantryItem } = useKitchen();
   const { notify } = useFeedback();
   const [name, setName] = useState(""),
     [quantity, setQuantity] = useState("1"),
@@ -75,7 +83,7 @@ export function AddPantryScreen() {
         location,
         expirationDate: date || undefined,
       });
-      setPantry((previous) => [item, ...previous]);
+      upsertPantryItem(item);
       notify("Added to your pantry");
       draft.finish(() =>
         router.canGoBack() ? router.back() : router.replace("/pantry"),
@@ -233,7 +241,7 @@ export function AddPantryScreen() {
 
 export function AddRecipeScreen() {
   const { sourceUrl = "" } = useLocalSearchParams<{ sourceUrl?: string }>();
-  const { setRecipes } = useKitchen();
+  const { upsertRecipe } = useKitchen();
   const { notify } = useFeedback();
   const [title, setTitle] = useState(""),
     [description, setDescription] = useState(""),
@@ -297,7 +305,7 @@ export function AddRecipeScreen() {
           )
           .join("\n")}`,
       });
-      setRecipes((previous) => [item, ...previous]);
+      upsertRecipe(item);
       notify("Saved to your cookbook");
       draft.finish(() =>
         router.dismissTo({
@@ -541,6 +549,13 @@ export function ReceiptScreen() {
     [saved, setSaved] = useState(false);
   const saving = useRef(false);
   const draft = useFormDraft(!!uri && !saved, busy);
+  const [replacement, setReplacement] = useState<(() => void) | null>(null);
+  const afterReplacementDismiss = useRef<(() => void) | null>(null);
+  const replacePhoto = (action: () => void) => {
+    if (saving.current) return;
+    if (uri && !saved) setReplacement(() => action);
+    else action();
+  };
   const pick = async (library: boolean) => {
     if (saving.current) return;
     saving.current = true;
@@ -600,6 +615,32 @@ export function ReceiptScreen() {
     >
       {draft.guard}
       <Text style={s.title}>Bring the shop home.</Text>
+      <Sheet
+        visible={!!replacement}
+        title="Replace this unsaved receipt?"
+        onClose={() => setReplacement(null)}
+        onDismiss={() => {
+          const action = afterReplacementDismiss.current;
+          afterReplacementDismiss.current = null;
+          action?.();
+        }}
+      >
+        <Text style={s.body}>
+          Save your current receipt first if you want to keep it.
+        </Text>
+        <Button
+          title="Keep current receipt"
+          onPress={() => setReplacement(null)}
+        />
+        <Button
+          title="Replace receipt"
+          destructive
+          onPress={() => {
+            afterReplacementDismiss.current = replacement;
+            setReplacement(null);
+          }}
+        />
+      </Sheet>
       <Text style={s.body}>
         Photograph a receipt and keep it handy while you add your purchases.
       </Text>
@@ -607,13 +648,13 @@ export function ReceiptScreen() {
         title="Take a receipt photo"
         icon="camera"
         disabled={busy}
-        onPress={() => void pick(false)}
+        onPress={() => replacePhoto(() => void pick(false))}
       />
       <Button
         title="Choose from photos"
         secondary
         disabled={busy}
-        onPress={() => void pick(true)}
+        onPress={() => replacePhoto(() => void pick(true))}
       />
       {!uri && <ErrorText message={error} />}
       {!!uri && (
@@ -655,10 +696,13 @@ export function ReceiptScreen() {
           disabled={busy}
           key={receipt.id}
           style={[s.card, s.row]}
-          onPress={() => {
-            setUri(receipt.uri);
-            setSaved(true);
-          }}
+          onPress={() =>
+            replacePhoto(() => {
+              setUri(receipt.uri);
+              setSaved(true);
+              setError("");
+            })
+          }
         >
           <Image
             source={{ uri: receipt.uri }}

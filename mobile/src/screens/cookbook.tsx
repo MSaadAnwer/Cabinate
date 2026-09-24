@@ -28,7 +28,11 @@ import {
 } from "../utils/kitchen";
 
 export default function CookbookScreen() {
-  const { recipes, loading, loaded, error, reload } = useKitchen();
+  const {
+    recipes,
+    recipeState: { loading, loaded, error },
+    reload,
+  } = useKitchen();
   const [query, setQuery] = useState("");
   const matches = recipes.filter((recipe) =>
     recipe.title.toLowerCase().includes(query.toLowerCase()),
@@ -147,8 +151,13 @@ export default function CookbookScreen() {
 }
 export function RecipeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { recipes, data, update, loaded, loading, error, reload } =
-    useKitchen();
+  const {
+    recipes,
+    data,
+    update,
+    recipeState: { loaded, loading, error },
+    reload,
+  } = useKitchen();
   const [tab, setTab] = useState<"ingredients" | "steps">("ingredients");
   const recipe = recipes.find((item) => item.id === id);
   if (!recipe && (!loaded || loading || error))
@@ -292,10 +301,9 @@ export function ImportListScreen() {
   const {
     recipes,
     pantry,
-    loading,
-    loaded,
+    recipeState: { loading, loaded, error: apiError },
+    pantryState,
     reload,
-    error: apiError,
     data,
     update,
     ready,
@@ -321,7 +329,15 @@ export function ImportListScreen() {
     busy,
   );
   const save = async () => {
-    if (saving.current || !ready || !recipe || !included.length) return;
+    if (
+      saving.current ||
+      !ready ||
+      !recipe ||
+      !included.length ||
+      (usePantry &&
+        (!pantryState.loaded || pantryState.loading || !!pantryState.error))
+    )
+      return;
     saving.current = true;
     setBusy(true);
     setError("");
@@ -364,7 +380,14 @@ export function ImportListScreen() {
             <Button
               title={`Create list · ${included.length} items`}
               pending={busy}
-              disabled={!included.length || !ready}
+              disabled={
+                !included.length ||
+                !ready ||
+                (usePantry &&
+                  (!pantryState.loaded ||
+                    pantryState.loading ||
+                    !!pantryState.error))
+              }
               onPress={() => void save()}
             />
           </>
@@ -428,10 +451,23 @@ export function ImportListScreen() {
               accessibilityLabel="Use pantry when making this list"
               value={usePantry}
               onValueChange={setUsePantry}
-              disabled={busy || loading || !!apiError}
+              disabled={
+                busy ||
+                (!usePantry &&
+                  (!pantryState.loaded ||
+                    pantryState.loading ||
+                    !!pantryState.error))
+              }
               trackColor={{ true: "#819568" }}
             />
           </View>
+          <DataNotice
+            loading={pantryState.loading}
+            loaded={pantryState.loaded}
+            error={pantryState.error}
+            subject="your pantry"
+            onRetry={() => void reload()}
+          />
           <Text style={s.muted}>
             Review before saving: matching uses ingredient names, not
             quantities. Items with different names stay on your list.

@@ -16,9 +16,17 @@ import { daysUntil, expiryLabel } from "../utils/kitchen";
 import { ingestApi } from "../services/api";
 import type { RawIngestPayload } from "../types/ingest";
 import { RecallNotices } from "../components/recall-feed";
+import {
+  createRemoteCollection,
+  initialCollection,
+} from "../utils/remote-collection";
 
 export function NotificationsScreen() {
-  const { pantry, loading, loaded, error, reload } = useKitchen();
+  const {
+    pantry,
+    pantryState: { loading, loaded, error },
+    reload,
+  } = useKitchen();
   const items = pantry
     .filter(
       (item) => item.expirationDate && daysUntil(item.expirationDate) <= 7,
@@ -69,8 +77,18 @@ export function NotificationsScreen() {
   );
 }
 export function AccountScreen() {
-  const { data, pantry, recipes, ready, loaded, loading, error, reload } =
-    useKitchen();
+  const {
+    data,
+    pantry,
+    recipes,
+    pantryState,
+    recipeState,
+    ready,
+    loaded,
+    loading,
+    error,
+    reload,
+  } = useKitchen();
   return (
     <View style={{ flex: 1 }}>
       <Page>
@@ -89,8 +107,8 @@ export function AccountScreen() {
         <View style={s.card}>
           <Text style={s.eyebrow}>In your Cabinate</Text>
           <Text style={s.body}>
-            {loaded ? pantry.length : "—"} pantry items ·{" "}
-            {loaded ? recipes.length : "—"} recipes
+            {pantryState.loaded ? pantry.length : "—"} pantry items ·{" "}
+            {recipeState.loaded ? recipes.length : "—"} recipes
           </Text>
           <Text style={s.body}>
             {ready ? data.lists.length : "—"} lists ·{" "}
@@ -119,22 +137,13 @@ export function AccountScreen() {
   );
 }
 export function CapturesScreen() {
-  const [items, setItems] = useState<RawIngestPayload[]>([]),
-    [error, setError] = useState(""),
-    [loading, setLoading] = useState(true),
-    [loaded, setLoaded] = useState(false);
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      setItems(await ingestApi.getAll());
-      setLoaded(true);
-      setError("");
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const [{ items, error, loading, loaded }, setState] = useState(
+    initialCollection<RawIngestPayload>,
+  );
+  const [collection] = useState(() =>
+    createRemoteCollection(() => ingestApi.getAll(), setState),
+  );
+  const load = collection.reload;
   useFocusEffect(
     useCallback(() => {
       void load();

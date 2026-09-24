@@ -12,48 +12,33 @@ import {
 import { pantryApi, recipeApi } from "../services/api";
 import type { PantryItem } from "../types/pantry";
 import type { Recipe } from "../types/recipe";
-import type { Category } from "../utils/kitchen";
+import { categories } from "../utils/kitchen";
+import { parseLocalData, type LocalData } from "../utils/local-data";
+import {
+  createRemoteCollection,
+  initialCollection,
+} from "../utils/remote-collection";
+export type {
+  ListItem,
+  GroceryList,
+  PhotoEntry,
+  Receipt,
+} from "../utils/local-data";
 
-export interface ListItem {
-  id: string;
-  name: string;
-  category: Category;
-  checked: boolean;
-}
-export interface GroceryList {
-  id: string;
-  name: string;
-  items: ListItem[];
-  createdAt: string;
-}
-export interface PhotoEntry {
-  id: string;
-  date: string;
-  uri: string;
-  caption: string;
-}
-export interface Receipt {
-  id: string;
-  uri: string;
-  date: string;
-}
-interface LocalData {
-  lists: GroceryList[];
-  meals: PhotoEntry[];
-  receipts: Receipt[];
-  steps: Record<string, number[]>;
-}
 const empty: LocalData = { lists: [], meals: [], receipts: [], steps: {} };
 const key = "cabinate:kitchen:v1";
 
 function useStore() {
-  const [pantry, setPantry] = useState<PantryItem[]>([]);
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [pantryState, setPantryState] = useState(initialCollection<PantryItem>);
+  const [recipeState, setRecipeState] = useState(initialCollection<Recipe>);
+  const [pantryCollection] = useState(() =>
+    createRemoteCollection(() => pantryApi.getAll(), setPantryState),
+  );
+  const [recipeCollection] = useState(() =>
+    createRemoteCollection(() => recipeApi.getAll(), setRecipeState),
+  );
   const [data, setData] = useState<LocalData>(empty);
   const [ready, setReady] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState("");
   const [storageError, setStorageError] = useState("");
   const persistence = useRef<ReturnType<
     typeof createOrderedStore<LocalData>
@@ -65,7 +50,6 @@ function useStore() {
       setData,
       setStorageError,
     );
-  const deletedPantryIds = useRef(new Set<string>());
   const deletePantryItem = useCallback(
     async (id: string, beforeRemove?: () => void) => {
       try {
@@ -73,54 +57,34 @@ function useStore() {
       } catch (error) {
         if ((error as { status?: number }).status !== 404) throw error;
       }
-      // Also filter late refresh responses, so a deleted expiration cannot reappear.
-      deletedPantryIds.current.add(id);
       beforeRemove?.();
-      setPantry((previous) => previous.filter((item) => item.id !== id));
+      pantryCollection.remove(id);
     },
-    [],
+    [pantryCollection],
   );
   const reload = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [p, r] = await Promise.all([
-        pantryApi.getAll(),
-        recipeApi.getAll(),
-      ]);
-      setPantry(p.filter((item) => !deletedPantryIds.current.has(item.id)));
-      setRecipes(r);
-      setLoaded(true);
-      setError("");
-    } catch (e) {
-      setError(
-        (e as Error).message || "Could not connect. Pull down to retry.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    await Promise.all([pantryCollection.reload(), recipeCollection.reload()]);
+  }, [pantryCollection, recipeCollection]);
   useEffect(() => {
+    let active = true;
     void reload();
     AsyncStorage.getItem(key)
       .then((raw) => {
+        if (!active) return;
         if (raw) {
-          const parsed = JSON.parse(raw) as LocalData;
-          if (
-            !Array.isArray(parsed.lists) ||
-            !Array.isArray(parsed.meals) ||
-            !Array.isArray(parsed.receipts) ||
-            typeof parsed.steps !== "object"
-          )
-            throw new Error("Invalid saved data");
-          persistence.current!.hydrate(parsed);
+          persistence.current!.hydrate(parseLocalData(raw, categories));
         }
         setReady(true);
       })
-      .catch(() =>
-        setStorageError(
-          "Could not load saved lists and photos. Restart the app before making changes.",
-        ),
-      );
+      .catch(() => {
+        if (active)
+          setStorageError(
+            "Could not load saved lists and photos. Restart the app before making changes.",
+          );
+      });
+    return () => {
+      active = false;
+    };
   }, [reload]);
   const update = useCallback(
     (change: (previous: LocalData) => LocalData): Promise<void> => {
@@ -133,17 +97,19 @@ function useStore() {
     [ready],
   );
   return {
-    pantry,
-    setPantry,
+    pantry: pantryState.items,
+    pantryState,
+    upsertPantryItem: pantryCollection.upsert,
     deletePantryItem,
-    recipes,
-    setRecipes,
+    recipes: recipeState.items,
+    recipeState,
+    upsertRecipe: recipeCollection.upsert,
     data,
     update,
     ready,
-    loading,
-    loaded,
-    error,
+    loading: pantryState.loading || recipeState.loading,
+    loaded: pantryState.loaded && recipeState.loaded,
+    error: pantryState.error || recipeState.error,
     storageError,
     reload,
   };

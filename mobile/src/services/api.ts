@@ -1,4 +1,5 @@
-import type { ApiErrorResponse, SeedResponse } from "../types/common";
+import { requestJson } from "./http";
+import type { SeedResponse } from "../types/common";
 import type { IngestPayloadRequest, RawIngestPayload } from "../types/ingest";
 import type {
   CreatePantryItemRequest,
@@ -14,53 +15,8 @@ import type {
 const DEFAULT_API_URL = "http://localhost:8080/api/v1";
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? DEFAULT_API_URL;
 
-async function request<T>(
-  endpoint: string,
-  options: RequestInit = {},
-): Promise<T> {
-  const headers = {
-    Accept: "application/json",
-    "Content-Type": "application/json",
-    ...options.headers,
-  };
-
-  try {
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
-      ...options,
-      headers,
-    });
-
-    if (!response.ok) {
-      let errorBody: ApiErrorResponse;
-      try {
-        errorBody = await response.json();
-      } catch {
-        errorBody = {
-          status: response.status,
-          error: response.statusText,
-          message: `Request failed with status ${response.status}`,
-        };
-      }
-      throw errorBody;
-    }
-
-    if (response.status === 204) {
-      return {} as T;
-    }
-
-    return await response.json();
-  } catch (error: unknown) {
-    const maybeApiError = error as Partial<ApiErrorResponse>;
-    if (maybeApiError.status !== undefined && maybeApiError.message) {
-      throw maybeApiError;
-    }
-
-    throw {
-      status: 0,
-      error: "Network Error",
-      message: "Could not connect to Cabinate. Check your connection and try again.",
-    } satisfies ApiErrorResponse;
-  }
+function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  return requestJson<T>(`${BASE_URL}${endpoint}`, options);
 }
 
 export const pantryApi = {

@@ -598,13 +598,21 @@ export function Sheet({
   const insets = useSafeAreaInsets();
   const heading = useRef<View>(null);
   const { reduceMotion } = useFeedback();
+  const wasVisible = useRef(false);
+  const dismissed = useRef(onDismiss);
+  dismissed.current = onDismiss;
+  useEffect(() => {
+    if (!visible && wasVisible.current && Platform.OS !== "ios")
+      dismissed.current?.();
+    wasVisible.current = visible;
+  }, [visible]);
   return (
     <Modal
       visible={visible}
       transparent
       animationType={reduceMotion ? "none" : "fade"}
       onRequestClose={onClose}
-      onDismiss={onDismiss}
+      onDismiss={Platform.OS === "ios" ? onDismiss : undefined}
       onShow={() => {
         Keyboard.dismiss();
         focusControl(heading.current);

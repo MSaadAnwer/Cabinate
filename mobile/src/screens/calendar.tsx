@@ -11,7 +11,7 @@ import {
   IconButton,
   s,
 } from "../components/ui";
-import { useKitchen } from "../state/kitchen-store";
+import { useKitchen, type PhotoEntry } from "../state/kitchen-store";
 import { capturePhoto } from "../services/photos";
 import { expiryLabel, localDate, newId } from "../utils/kitchen";
 
@@ -21,9 +21,7 @@ export default function CalendarScreen() {
     data,
     update,
     ready,
-    loaded,
-    loading,
-    error: apiError,
+    pantryState: { loaded, loading, error: apiError },
     reload,
   } = useKitchen();
   const [month, setMonth] = useState(
@@ -34,9 +32,10 @@ export default function CalendarScreen() {
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const today = localDate();
+  const [pendingPhoto, setPendingPhoto] = useState<PhotoEntry | null>(null);
   const saving = useRef(false);
   const { notify } = useFeedback();
-  const draft = useFormDraft(!!caption, busy);
+  const draft = useFormDraft(!!caption || !!pendingPhoto, busy);
   const count = new Date(
     month.getFullYear(),
     month.getMonth() + 1,
@@ -53,30 +52,54 @@ export default function CalendarScreen() {
           ),
         ),
   );
-  const photos = data.meals.filter((meal) => meal.date === selected),
+  const savedMeals = data.meals.filter((meal) => meal.id !== pendingPhoto?.id);
+  const photos = savedMeals.filter((meal) => meal.date === selected),
     expiring = pantry.filter((item) => item.expirationDate === selected);
+  const persistPhoto = async (photo: PhotoEntry) => {
+    await update((previous) => ({
+      ...previous,
+      // Reuse the draft ID if a retry follows a failed write.
+      meals: [...previous.meals.filter((meal) => meal.id !== photo.id), photo],
+    }));
+    setPendingPhoto(null);
+    setCaption("");
+    notify("Meal photo saved");
+  };
+  const retry = async () => {
+    if (saving.current || !ready || !pendingPhoto) return;
+    saving.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      await persistPhoto({
+        ...pendingPhoto,
+        caption: caption.trim() || "A meal to remember",
+      });
+    } catch {
+      setError(
+        "Could not save this photo. Your photo and note are still here. Try again.",
+      );
+    } finally {
+      saving.current = false;
+      setBusy(false);
+    }
+  };
   const pick = async (library: boolean) => {
-    if (saving.current || !ready) return;
+    if (saving.current || !ready || pendingPhoto) return;
     saving.current = true;
     setBusy(true);
     setError("");
     try {
       const uri = await capturePhoto(library);
       if (uri) {
-        await update((previous) => ({
-          ...previous,
-          meals: [
-            ...previous.meals,
-            {
-              id: newId(),
-              uri,
-              date: selected,
-              caption: caption.trim() || "A meal to remember",
-            },
-          ],
-        }));
-        setCaption("");
-        notify("Meal photo saved");
+        const photo = {
+          id: newId(),
+          uri,
+          date: selected,
+          caption: caption.trim() || "A meal to remember",
+        };
+        setPendingPhoto(photo);
+        await persistPhoto(photo);
       }
     } catch (e) {
       setError((e as Error).message);
@@ -99,7 +122,7 @@ export default function CalendarScreen() {
         <IconButton
           name="back"
           label="Previous month"
-          disabled={busy}
+          disabled={busy || !!pendingPhoto}
           onPress={() => changeMonth(-1)}
         />
         <Text
@@ -113,7 +136,7 @@ export default function CalendarScreen() {
         <IconButton
           name="chevron"
           label="Next month"
-          disabled={busy}
+          disabled={busy || !!pendingPhoto}
           onPress={() => changeMonth(1)}
         />
       </View>
@@ -136,13 +159,13 @@ export default function CalendarScreen() {
         }}
       >
         {cells.map((date, index) => {
-          const photo = date && data.meals.find((meal) => meal.date === date);
+          const photo = date && savedMeals.find((meal) => meal.date === date);
           const expiration =
             date && pantry.some((item) => item.expirationDate === date);
           return date ? (
             <Pressable
               key={date}
-              disabled={busy}
+              disabled={busy || !!pendingPhoto}
               accessibilityRole="button"
               accessibilityState={{ selected: selected === date }}
               accessibilityLabel={`${date}${photo ? ", meal photo" : ""}${expiration ? ", food expiration" : ""}`}
@@ -280,7 +303,25 @@ export default function CalendarScreen() {
             editable={!busy}
             onChangeText={setCaption}
           />
-          {selected === today && (
+          {pendingPhoto && (
+            <>
+              <Image
+                accessibilityLabel="Unsaved meal photo"
+                source={{ uri: pendingPhoto.uri }}
+                style={{ width: "100%", aspectRatio: 1, borderRadius: 22 }}
+              />
+              <Text style={s.body}>
+                This photo is still waiting to be saved.
+              </Text>
+              <Button
+                title="Save meal photo"
+                pending={busy}
+                disabled={!ready}
+                onPress={() => void retry()}
+              />
+            </>
+          )}
+          {!pendingPhoto && selected === today && (
             <Button
               title="Photograph today’s meal"
               icon="camera"
@@ -288,12 +329,14 @@ export default function CalendarScreen() {
               onPress={() => void pick(false)}
             />
           )}
-          <Button
-            title="Add a meal from photos"
-            secondary
-            disabled={busy || !ready}
-            onPress={() => void pick(true)}
-          />
+          {!pendingPhoto && (
+            <Button
+              title="Add a meal from photos"
+              secondary
+              disabled={busy || !ready}
+              onPress={() => void pick(true)}
+            />
+          )}
         </>
       )}
       <ErrorText message={error} />

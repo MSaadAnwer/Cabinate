@@ -2,7 +2,7 @@
 
 ## Implementation progress
 
-Updated September 23, 2026. The second implementation pass extends the original tab and shopping work across the existing mobile workflows. This is implementation progress, not a completed device acceptance gate.
+Updated September 24, 2026. The second implementation pass extends the original tab and shopping work across the existing mobile workflows. The reliability review below covers the subsequent fixes. This is implementation progress, not a completed device acceptance gate.
 
 | Area | Implemented | Verification / remaining work |
 | --- | --- | --- |
@@ -16,6 +16,16 @@ Updated September 23, 2026. The second implementation pass extends the original 
 | Contrast | Darkened muted labels and functional green. Measured contrast: muted/cream 5.09:1, muted/white 5.50:1, green/cream 5.25:1, cream/ink 8.82:1, cream/red 5.58:1, ink/selected 7.90:1. | These measurements cover the shared palette. A complete screen-by-screen large-text and contrast audit is still pending. |
 
 Validation for this pass: 12 mobile tests pass, TypeScript passes, and the production iOS Hermes bundle exports. Browser checks are layout and behavior evidence only. Physical iPhone release profiling with representative collections, VoiceOver, large text, Reduce Motion, native date/keyboard interactions, and disabled haptics remains required before feature work resumes. No virtualization or performance improvement is claimed without that profiling.
+
+### Reliability review — September 24, 2026
+
+- Pantry and Cookbook now track loading and failure independently. Only the latest refresh may publish; confirmed creates, updates, and deletions survive reads that began before them. Saved captures and recall requests also ignore older completions.
+- Local hydration checks nested lists, items, photos, receipts, and cooking steps before publishing. Malformed records leave the original saved snapshot untouched and prevent writes rather than crashing a screen or silently resetting data.
+- API requests have a 15-second deadline covering headers and body. Malformed error bodies retain the actual HTTP status, including already-deleted pantry items. Mutations are never retried automatically; an uncertain response directs the user to check saved content first.
+- Failed meal-photo saves retain the photo, date, and note for retry with the same ID. Date changes cannot detach an unsaved photo from its day. Replacing an unsaved receipt requires an explicit choice, and the iOS picker waits for the confirmation sheet to dismiss.
+- Pantry-aware recipe import requires a successfully loaded pantry when matching is enabled. Matching can still be switched off during a pantry outage so a full ingredient list remains available.
+
+Validation: 26 mobile tests and 66 backend tests pass; mobile TypeScript and the production iOS Hermes export pass. Browser smoke checks cover loaded Pantry/Cookbook data, ten tab round trips with a retained recipe and search query, pantry-aware import, and draft protection. Photo permissions, save failures on a real device, native sheet/picker transitions, and the physical-device acceptance gate remain unverified. Calendar removal animation and the visual refinements listed above remain outstanding; this review does not mark the entire specification complete.
 
 Review date: September 20, 2026. App baseline: `068bb47` (pushed to origin/main).
 
