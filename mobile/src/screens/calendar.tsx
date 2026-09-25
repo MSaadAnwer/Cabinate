@@ -1,7 +1,12 @@
-import { Touch as Pressable, useFeedback } from "../components/feedback";
+import {
+  Touch as Pressable,
+  useFeedback,
+  useRemovalMotion,
+} from "../components/feedback";
 import { useFormDraft } from "../components/form-draft";
+import { useContentLayout } from "../components/content-layout";
 import { useRef, useState } from "react";
-import { Alert, Image, Text, View } from "react-native";
+import { Image, Text, View } from "react-native";
 import {
   Button,
   ErrorText,
@@ -9,6 +14,8 @@ import {
   Field,
   FormPage,
   IconButton,
+  Sheet,
+  focusControl,
   s,
 } from "../components/ui";
 import { useKitchen, type PhotoEntry } from "../state/kitchen-store";
@@ -16,10 +23,12 @@ import { capturePhoto } from "../services/photos";
 import { expiryLabel, localDate, newId } from "../utils/kitchen";
 
 export default function CalendarScreen() {
+  const { gutter, fontScale } = useContentLayout();
   const {
     pantry,
     data,
     update,
+    deleteMealPhoto,
     ready,
     pantryState: { loaded, loading, error: apiError },
     reload,
@@ -33,8 +42,13 @@ export default function CalendarScreen() {
     [error, setError] = useState("");
   const today = localDate();
   const [pendingPhoto, setPendingPhoto] = useState<PhotoEntry | null>(null);
+  const [confirmPhoto, setConfirmPhoto] = useState<PhotoEntry | null>(null);
+  const [removeError, setRemoveError] = useState("");
+  const [removing, setRemoving] = useState(false);
+  const dayHeading = useRef<View>(null);
   const saving = useRef(false);
   const { notify } = useFeedback();
+  const prepareRemoval = useRemovalMotion();
   const draft = useFormDraft(!!caption || !!pendingPhoto, busy);
   const count = new Date(
     month.getFullYear(),
@@ -113,9 +127,54 @@ export default function CalendarScreen() {
     setMonth(next);
     setSelected(localDate(next));
   };
+  const removePhoto = async () => {
+    if (saving.current || !ready || !confirmPhoto) return;
+    saving.current = true;
+    setBusy(true);
+    setRemoving(true);
+    setRemoveError("");
+    try {
+      await deleteMealPhoto(confirmPhoto.id, prepareRemoval);
+      setConfirmPhoto(null);
+      notify("Meal photo removed");
+    } catch {
+      setRemoveError(
+        "Could not remove this photo. It is still in your calendar. Try again.",
+      );
+    } finally {
+      saving.current = false;
+      setBusy(false);
+      setRemoving(false);
+    }
+  };
   return (
     <FormPage>
       {draft.guard}
+      <Sheet
+        visible={!!confirmPhoto}
+        title="Remove meal photo?"
+        dismissDisabled={removing}
+        onClose={() => setConfirmPhoto(null)}
+        onDismiss={() => focusControl(dayHeading.current)}
+      >
+        <Text style={s.body}>
+          Remove “{confirmPhoto?.caption}” from your calendar?
+        </Text>
+        <ErrorText message={removeError} />
+        <Button
+          title="Keep photo"
+          secondary
+          disabled={removing}
+          onPress={() => setConfirmPhoto(null)}
+        />
+        <Button
+          title="Remove photo"
+          destructive
+          pending={removing}
+          disabled={!ready}
+          onPress={() => void removePhoto()}
+        />
+      </Sheet>
       <Text style={s.eyebrow}>Your kitchen, day by day</Text>
       <Text style={s.title}>Little moments.{"\n"}Lovely meals.</Text>
       <View style={s.row}>
@@ -140,7 +199,7 @@ export default function CalendarScreen() {
           onPress={() => changeMonth(1)}
         />
       </View>
-      <View style={{ flexDirection: "row", marginHorizontal: -18 }}>
+      <View style={{ flexDirection: "row", marginHorizontal: 6 - gutter }}>
         {["S", "M", "T", "W", "T", "F", "S"].map((day, index) => (
           <Text
             key={index}
@@ -155,7 +214,7 @@ export default function CalendarScreen() {
           flexDirection: "row",
           flexWrap: "wrap",
           rowGap: 8,
-          marginHorizontal: -18,
+          marginHorizontal: 6 - gutter,
         }}
       >
         {cells.map((date, index) => {
@@ -170,7 +229,11 @@ export default function CalendarScreen() {
               accessibilityState={{ selected: selected === date }}
               accessibilityLabel={`${date}${photo ? ", meal photo" : ""}${expiration ? ", food expiration" : ""}`}
               onPress={() => setSelected(date)}
-              style={{ width: "14.2857%", aspectRatio: 0.83, padding: 2 }}
+              style={{
+                width: "14.2857%",
+                height: Math.max(52, 32 * fontScale + 16),
+                padding: 2,
+              }}
             >
               <View
                 style={{
@@ -195,6 +258,8 @@ export default function CalendarScreen() {
                   />
                 )}
                 <Text
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
                   style={{
                     color: photo ? "#FFFFFF" : "#324A3D",
                     fontSize: 14,
@@ -229,13 +294,20 @@ export default function CalendarScreen() {
         Photos are your meals · terracotta dots are expirations
       </Text>
       <View style={{ height: 1, backgroundColor: "#E1E2D4" }} />
-      <Text style={s.heading}>
-        {new Date(`${selected}T12:00:00`).toLocaleDateString(undefined, {
-          weekday: "long",
-          month: "long",
-          day: "numeric",
-        })}
-      </Text>
+      <View
+        ref={dayHeading}
+        tabIndex={-1}
+        accessible
+        accessibilityRole="header"
+      >
+        <Text style={s.heading}>
+          {new Date(`${selected}T12:00:00`).toLocaleDateString(undefined, {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+          })}
+        </Text>
+      </View>
       {expiring.map((item) => (
         <View style={s.card} key={item.id}>
           <Text style={s.body}>
@@ -266,31 +338,15 @@ export default function CalendarScreen() {
           />
           <Text style={s.body}>{photo.caption}</Text>
           <Pressable
-            accessibilityRole="button"
-            onPress={() =>
-              Alert.alert(
-                "Remove meal photo?",
-                "This removes it from your calendar.",
-                [
-                  { text: "Cancel", style: "cancel" },
-                  {
-                    text: "Remove",
-                    style: "destructive",
-                    onPress: () => {
-                      void update((previous) => ({
-                        ...previous,
-                        meals: previous.meals.filter(
-                          (item) => item.id !== photo.id,
-                        ),
-                      })).catch((e) => setError((e as Error).message));
-                    },
-                  },
-                ],
-              )
-            }
+            accessibilityLabel={`Remove meal photo: ${photo.caption}`}
+            disabled={busy || !ready}
+            onPress={() => {
+              setRemoveError("");
+              setConfirmPhoto(photo);
+            }}
             style={{ minHeight: 44, justifyContent: "center" }}
           >
-            <Text style={s.muted}>Remove photo</Text>
+            <Text style={[s.body, { color: "#A04736" }]}>Remove photo</Text>
           </Pressable>
         </View>
       ))}

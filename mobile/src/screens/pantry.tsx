@@ -8,6 +8,10 @@ import { RefreshControl, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { FoodShape, Icon } from "../components/art";
 import {
+  collectionLayout,
+  useContentLayout,
+} from "../components/content-layout";
+import {
   Button,
   DataNotice,
   IconButton,
@@ -27,6 +31,7 @@ import {
 } from "../utils/kitchen";
 
 export default function PantryScreen() {
+  const { singleColumn } = useContentLayout();
   const {
     pantry,
     pantryState: { error, loading, loaded },
@@ -42,6 +47,8 @@ export default function PantryScreen() {
       >
         <Text style={s.title}>Your pantry.</Text>
         <DataNotice
+          variant="pantry"
+          subject="your pantry"
           loading={loading}
           loaded={loaded}
           error={error}
@@ -52,21 +59,13 @@ export default function PantryScreen() {
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push("/pantry/inventory")}
-              style={[
-                s.row,
-                {
-                  paddingHorizontal: 18,
-                  paddingVertical: 13,
-                  backgroundColor: "#E9ECDC",
-                  borderRadius: 12,
-                },
-              ]}
+              style={[s.row, collectionLayout.pantryAll]}
             >
               <Text style={[s.body, { flex: 1, fontWeight: "600" }]}>All</Text>
               <Text style={s.muted}>{pantry.length} items</Text>
               <Icon name="chevron" size={17} />
             </Pressable>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 16 }}>
+            <View style={collectionLayout.pantryGrid}>
               {categories.map((category) => (
                 <Pressable
                   key={category}
@@ -78,16 +77,17 @@ export default function PantryScreen() {
                       params: { category },
                     })
                   }
-                  style={({ pressed }) => ({
-                    width: "47%",
-                    alignItems: "center",
-                    paddingVertical: 12,
-                    gap: 4,
-                    opacity: pressed ? 0.6 : 1,
-                  })}
+                  style={[
+                    collectionLayout.pantryTile,
+                    singleColumn && { width: "100%" },
+                  ]}
                 >
                   <FoodShape category={category} />
-                  <Text style={[s.heading, { fontSize: 19 }]}>{category}</Text>
+                  <Text
+                    style={[s.heading, { fontSize: 19, textAlign: "center" }]}
+                  >
+                    {category}
+                  </Text>
                   <Text style={s.muted}>
                     {
                       pantry.filter(
@@ -204,12 +204,14 @@ export function InventoryScreen() {
       {items.map((item) => (
         <View key={item.id} style={s.card}>
           <View style={s.row}>
-            <Text selectable style={[s.heading, { fontSize: 21, flex: 1 }]}>
-              {item.name}
-            </Text>
-            <Text style={s.body}>
-              {item.quantity} {item.unit}
-            </Text>
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text selectable style={[s.heading, { fontSize: 21 }]}>
+                {item.name}
+              </Text>
+              <Text style={s.body}>
+                {item.quantity} {item.unit}
+              </Text>
+            </View>
             <IconButton
               name="trash"
               destructive

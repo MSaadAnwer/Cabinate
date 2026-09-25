@@ -5,6 +5,10 @@ import { RefreshControl, Switch, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { FoodShape, Icon } from "../components/art";
 import {
+  collectionLayout,
+  useContentLayout,
+} from "../components/content-layout";
+import {
   Button,
   CheckRow,
   DataNotice,
@@ -28,6 +32,7 @@ import {
 } from "../utils/kitchen";
 
 export default function CookbookScreen() {
+  const layout = useContentLayout();
   const {
     recipes,
     recipeState: { loading, loaded, error },
@@ -70,6 +75,8 @@ export default function CookbookScreen() {
           placeholder="Something delicious…"
         />
         <DataNotice
+          variant="recipes"
+          subject="your cookbook"
           loading={loading}
           loaded={loaded}
           error={error}
@@ -85,24 +92,27 @@ export default function CookbookScreen() {
                 params: { id: recipe.id },
               })
             }
-            style={[s.card, s.row, { padding: 14 }]}
+            style={[s.card, s.row, collectionLayout.recipeCard]}
           >
-            <View
-              style={{
-                backgroundColor: recipeArtwork(recipe.id).background,
-                borderRadius: 16,
-                width: 80,
-                height: 104,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <FoodShape
-                category={recipeArtwork(recipe.id).category}
-                width={64}
-                height={80}
-              />
-            </View>
+            {layout.showRecipeArt && (
+              <View
+                style={{
+                  backgroundColor: recipeArtwork(recipe.id).background,
+                  borderRadius: 16,
+                  width: layout.recipeArtWidth,
+                  height: layout.recipeArtHeight,
+                  flexShrink: 0,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <FoodShape
+                  category={recipeArtwork(recipe.id).category}
+                  width={layout.recipeArtWidth - 16}
+                  height={layout.recipeArtHeight - 24}
+                />
+              </View>
+            )}
             <View style={{ flex: 1, gap: 9 }}>
               <Text style={[s.heading, { fontSize: 21 }]}>{recipe.title}</Text>
               <Text style={s.muted}>

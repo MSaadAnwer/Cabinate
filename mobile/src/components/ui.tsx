@@ -30,6 +30,7 @@ import { useHeaderHeight } from "expo-router/react-navigation";
 import { Icon, TomatoMark, type IconName } from "./art";
 import { colors, motion, radius, spacing } from "./tokens";
 import { Touch, selectionFeedback, useFeedback } from "./feedback";
+import { collectionLayout, useContentLayout } from "./content-layout";
 export { colors, Touch };
 
 export const s = StyleSheet.create({
@@ -88,8 +89,10 @@ export function Page({
   ...props
 }: ScrollViewProps & { children: ReactNode; bottom?: number }) {
   const insets = useSafeAreaInsets();
+  const { gutter } = useContentLayout();
   return (
     <ScrollView
+      showsVerticalScrollIndicator={Platform.OS !== "web"}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
       contentInsetAdjustmentBehavior="automatic"
@@ -97,6 +100,7 @@ export function Page({
       contentContainerStyle={[
         {
           padding: spacing.xl,
+          paddingHorizontal: gutter,
           paddingBottom: bottom + insets.bottom,
           gap: 20,
           flexGrow: 1,
@@ -118,6 +122,7 @@ export function FormPage({
 }) {
   const headerHeight = useHeaderHeight();
   const insets = useSafeAreaInsets();
+  const { gutter } = useContentLayout();
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -128,7 +133,7 @@ export function FormPage({
       {footer && (
         <View
           style={{
-            paddingHorizontal: spacing.xl,
+            paddingHorizontal: gutter,
             paddingTop: spacing.md,
             paddingBottom: Math.max(insets.bottom, spacing.md),
             gap: spacing.sm,
@@ -483,9 +488,12 @@ export function ErrorText({ message }: { message: string }) {
 
 export function LoadingRows({
   label = "Loading your kitchen",
+  variant = "rows",
 }: {
   label?: string;
+  variant?: "rows" | "pantry" | "recipes";
 }) {
+  const layout = useContentLayout();
   const [show, setShow] = useState(false);
   useEffect(() => {
     const timer = setTimeout(() => setShow(true), 180);
@@ -495,43 +503,118 @@ export function LoadingRows({
     <View
       accessibilityLabel={label}
       accessibilityState={{ busy: true }}
-      style={{ gap: 16, minHeight: 240, opacity: show ? 1 : 0 }}
+      aria-busy
+      accessible
+      style={{ gap: 20, opacity: show ? 1 : 0 }}
     >
-      {[0, 1, 2].map((index) => (
+      {variant === "pantry" ? (
         <View
-          key={index}
           accessible={false}
+          aria-hidden
           importantForAccessibility="no-hide-descendants"
-          style={[s.card, s.row]}
+          style={{ gap: 20 }}
         >
           <View
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 12,
-              backgroundColor: colors.selected,
-            }}
+            style={[
+              collectionLayout.pantryAll,
+              { minHeight: 26 + 23 * layout.fontScale },
+            ]}
           />
-          <View style={{ flex: 1, gap: 12 }}>
-            <View
-              style={{
-                height: 16,
-                width: "75%",
-                borderRadius: 8,
-                backgroundColor: colors.selected,
-              }}
-            />
-            <View
-              style={{
-                height: 12,
-                width: "45%",
-                borderRadius: 6,
-                backgroundColor: colors.selected,
-              }}
-            />
+          <View style={collectionLayout.pantryGrid}>
+            {Array.from({ length: 7 }, (_, index) => (
+              <View
+                key={index}
+                style={[
+                  collectionLayout.pantryTile,
+                  layout.singleColumn && { width: "100%" },
+                ]}
+              >
+                <View
+                  style={{
+                    width: 128,
+                    height: 156,
+                    borderRadius: 24,
+                    backgroundColor: colors.selected,
+                  }}
+                />
+                <View
+                  style={{
+                    width: "75%",
+                    height: 23 * layout.fontScale,
+                    borderRadius: 6,
+                    backgroundColor: colors.selected,
+                  }}
+                />
+                <View
+                  style={{
+                    width: "35%",
+                    height: 20 * layout.fontScale,
+                    borderRadius: 6,
+                    backgroundColor: colors.selected,
+                  }}
+                />
+              </View>
+            ))}
           </View>
         </View>
-      ))}
+      ) : (
+        [0, 1, 2].map((index) => (
+          <View
+            key={index}
+            accessible={false}
+            aria-hidden
+            importantForAccessibility="no-hide-descendants"
+            style={[
+              s.card,
+              s.row,
+              variant === "recipes" && collectionLayout.recipeCard,
+            ]}
+          >
+            {(variant !== "recipes" || layout.showRecipeArt) && (
+              <View
+                style={{
+                  width: variant === "recipes" ? layout.recipeArtWidth : 48,
+                  height: variant === "recipes" ? layout.recipeArtHeight : 48,
+                  flexShrink: 0,
+                  borderRadius: 12,
+                  backgroundColor: colors.selected,
+                }}
+              />
+            )}
+            <View style={{ flex: 1, gap: 9 }}>
+              <View
+                style={{
+                  height: (variant === "recipes" ? 23 : 16) * layout.fontScale,
+                  width: "75%",
+                  borderRadius: 8,
+                  backgroundColor: colors.selected,
+                }}
+              />
+              {variant === "recipes" && (
+                <View
+                  style={{
+                    height: 23 * layout.fontScale,
+                    width: "90%",
+                    borderRadius: 8,
+                    backgroundColor: colors.selected,
+                  }}
+                />
+              )}
+              <View
+                style={{
+                  height: (variant === "recipes" ? 20 : 12) * layout.fontScale,
+                  width: "45%",
+                  borderRadius: 6,
+                  backgroundColor: colors.selected,
+                }}
+              />
+            </View>
+            {variant === "recipes" && (
+              <View style={{ width: 16, height: 16 }} />
+            )}
+          </View>
+        ))
+      )}
     </View>
   );
 }
@@ -542,14 +625,17 @@ export function DataNotice({
   error,
   onRetry,
   subject = "your kitchen",
+  variant = "rows",
 }: {
   loading: boolean;
   loaded: boolean;
   error: string;
   onRetry: () => void;
   subject?: string;
+  variant?: "rows" | "pantry" | "recipes";
 }) {
-  if (loading && !loaded) return <LoadingRows label={`Loading ${subject}`} />;
+  if (loading && !loaded)
+    return <LoadingRows label={`Loading ${subject}`} variant={variant} />;
   if (!error) return null;
   return (
     <View
@@ -588,16 +674,22 @@ export function Sheet({
   title,
   children,
   onDismiss,
+  dismissDisabled = false,
 }: {
   visible: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
   onDismiss?: () => void;
+  dismissDisabled?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const heading = useRef<View>(null);
+  const { gutter } = useContentLayout();
   const { reduceMotion } = useFeedback();
+  const close = () => {
+    if (!dismissDisabled) onClose();
+  };
   const wasVisible = useRef(false);
   const dismissed = useRef(onDismiss);
   dismissed.current = onDismiss;
@@ -611,7 +703,7 @@ export function Sheet({
       visible={visible}
       transparent
       animationType={reduceMotion ? "none" : "fade"}
-      onRequestClose={onClose}
+      onRequestClose={close}
       onDismiss={Platform.OS === "ios" ? onDismiss : undefined}
       onShow={() => {
         Keyboard.dismiss();
@@ -624,12 +716,13 @@ export function Sheet({
           justifyContent: "flex-end",
           backgroundColor: "#20352944",
         }}
-        onAccessibilityEscape={onClose}
+        onAccessibilityEscape={close}
       >
         <Pressable
           accessible={false}
           importantForAccessibility="no"
-          onPress={onClose}
+          onPress={close}
+          disabled={dismissDisabled}
           style={StyleSheet.absoluteFill}
         />
         <View
@@ -641,7 +734,7 @@ export function Sheet({
             backgroundColor: colors.cream,
             borderTopLeftRadius: 24,
             borderTopRightRadius: 24,
-            padding: 24,
+            padding: gutter,
             paddingBottom: Math.max(insets.bottom, 24),
             maxHeight: "85%",
             gap: 16,
@@ -661,7 +754,8 @@ export function Sheet({
             <IconButton
               name="close"
               label={`Close ${title.toLowerCase()}`}
-              onPress={onClose}
+              onPress={close}
+              disabled={dismissDisabled}
             />
           </View>
           <ScrollView

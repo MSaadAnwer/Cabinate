@@ -96,11 +96,28 @@ function useStore() {
     },
     [ready],
   );
+  const deleteMealPhoto = useCallback(
+    (id: string, beforeRemove?: () => void): Promise<void> => {
+      if (!ready)
+        return Promise.reject(
+          new Error("Your saved photos are still loading. Please try again."),
+        );
+      return persistence.current!.commit(
+        (previous) => ({
+          ...previous,
+          meals: previous.meals.filter((photo) => photo.id !== id),
+        }),
+        beforeRemove,
+      );
+    },
+    [ready],
+  );
   return {
     pantry: pantryState.items,
     pantryState,
     upsertPantryItem: pantryCollection.upsert,
     deletePantryItem,
+    deleteMealPhoto,
     recipes: recipeState.items,
     recipeState,
     upsertRecipe: recipeCollection.upsert,
@@ -114,7 +131,7 @@ function useStore() {
     reload,
   };
 }
-const KitchenContext = createContext<ReturnType<typeof useStore> | null>(null);
+export const KitchenContext = createContext<ReturnType<typeof useStore> | null>(null);
 export function KitchenProvider({ children }: { children: ReactNode }) {
   return <KitchenContext value={useStore()}>{children}</KitchenContext>;
 }
