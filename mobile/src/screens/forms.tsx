@@ -109,7 +109,7 @@ export function AddPantryScreen() {
       }
     >
       {draft.guard}
-      <Text style={s.title}>Something fresh.</Text>
+      <Text style={s.title}>Add pantry item</Text>
       <Field
         inputRef={nameInput}
         onNext={() => quantityInput.current?.focus()}
@@ -334,7 +334,7 @@ export function AddRecipeScreen() {
       }
     >
       {draft.guard}
-      <Text style={s.title}>A keeper for your cookbook.</Text>
+      <Text style={s.title}>Add recipe</Text>
       {!!sourceUrl && (
         <Text selectable style={s.muted}>
           From: {sourceUrl}
@@ -389,7 +389,7 @@ export function AddRecipeScreen() {
         style={[s.card, { padding: 16 }]}
       >
         <Text style={s.body}>
-          {details ? "Hide recipe details" : "Servings & a little note"}
+          {details ? "Hide recipe details" : "Servings & description"}
         </Text>
         <Text style={s.muted}>Serves {servings}</Text>
       </Touch>
@@ -408,7 +408,7 @@ export function AddRecipeScreen() {
             editable={!busy}
           />
           <Field
-            label="A little note · optional"
+            label="Description · optional"
             placeholder="Why you love it"
             value={description}
             onChangeText={setDescription}
@@ -479,7 +479,7 @@ export function CaptureLinkScreen() {
     >
       {draft.guard}
       <Text style={s.title}>
-        {isRecipe ? "Found something delicious?" : "Keep that product handy."}
+        {isRecipe ? "Save recipe link" : "Save product link"}
       </Text>
       <Text style={s.body}>
         {isRecipe
@@ -614,7 +614,7 @@ export function ReceiptScreen() {
       }
     >
       {draft.guard}
-      <Text style={s.title}>Bring the shop home.</Text>
+      <Text style={s.title}>Receipt photo</Text>
       <Sheet
         visible={!!replacement}
         title="Replace this unsaved receipt?"

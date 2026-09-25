@@ -1,4 +1,5 @@
 import { useFormDraft } from "../components/form-draft";
+import { StepTimers } from "../components/cooking-timers";
 import { Touch as Pressable, useFeedback } from "../components/feedback";
 import { useRef, useState } from "react";
 import { RefreshControl, Switch, Text, View } from "react-native";
@@ -50,10 +51,10 @@ export default function CookbookScreen() {
         }
       >
         <View style={s.row}>
-          <Text style={[s.title, { flex: 1 }]}>Your cookbook.</Text>
+          <Text style={[s.title, { flex: 1 }]}>Cookbook</Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="AI pantry recipes"
+            accessibilityLabel="Pantry recipe matches"
             onPress={() => router.push("/inspiration")}
             style={{
               width: 48,
@@ -72,7 +73,7 @@ export default function CookbookScreen() {
           label="Find a recipe"
           value={query}
           onChangeText={setQuery}
-          placeholder="Something delicious…"
+          placeholder="Search recipes"
         />
         <DataNotice
           variant="recipes"
@@ -130,8 +131,8 @@ export default function CookbookScreen() {
         ))}
         {!matches.length && loaded && !loading && !query && (
           <Empty
-            title="A recipe worth keeping"
-            text="Add a family favorite by hand, or save a video link for later."
+            title="No recipes yet"
+            text="Add a recipe or save a video link."
           />
         )}
         {!matches.length && loaded && !!query && (
@@ -160,7 +161,10 @@ export default function CookbookScreen() {
   );
 }
 export function RecipeDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, tab: requestedTab } = useLocalSearchParams<{
+    id: string;
+    tab?: string;
+  }>();
   const {
     recipes,
     data,
@@ -168,7 +172,9 @@ export function RecipeDetailScreen() {
     recipeState: { loaded, loading, error },
     reload,
   } = useKitchen();
-  const [tab, setTab] = useState<"ingredients" | "steps">("ingredients");
+  const [tab, setTab] = useState<"ingredients" | "steps">(
+    requestedTab === "steps" ? "steps" : "ingredients",
+  );
   const recipe = recipes.find((item) => item.id === id);
   if (!recipe && (!loaded || loading || error))
     return (
@@ -195,7 +201,6 @@ export function RecipeDetailScreen() {
     checked = data.steps[id] || [];
   return (
     <Page>
-      <Text style={s.eyebrow}>From your cookbook</Text>
       <Text style={s.title}>{recipe.title}</Text>
       {recipe.description && <Text style={s.body}>{recipe.description}</Text>}
       <Text style={s.muted}>
@@ -229,7 +234,7 @@ export function RecipeDetailScreen() {
             ]}
           >
             <Text style={s.body}>
-              {value === "ingredients" ? "Ingredients" : "Let’s cook"}
+              {value === "ingredients" ? "Ingredients" : "Steps"}
             </Text>
           </Pressable>
         ))}
@@ -255,25 +260,32 @@ export function RecipeDetailScreen() {
             {checked.length} of {parsed.steps.length} steps complete
           </Text>
           {parsed.steps.map((step, index) => (
-            <CheckRow
-              key={index}
-              checked={checked.includes(index)}
-              title={`${index + 1}. ${step}`}
-              onPress={() => {
-                void update((previous) => {
-                  const values = previous.steps[id] || [];
-                  return {
-                    ...previous,
-                    steps: {
-                      ...previous.steps,
-                      [id]: values.includes(index)
-                        ? values.filter((value) => value !== index)
-                        : [...values, index],
-                    },
-                  };
-                }).catch(reportError);
-              }}
-            />
+            <View key={index}>
+              <CheckRow
+                checked={checked.includes(index)}
+                title={`${index + 1}. ${step}`}
+                onPress={() => {
+                  void update((previous) => {
+                    const values = previous.steps[id] || [];
+                    return {
+                      ...previous,
+                      steps: {
+                        ...previous.steps,
+                        [id]: values.includes(index)
+                          ? values.filter((value) => value !== index)
+                          : [...values, index],
+                      },
+                    };
+                  }).catch(reportError);
+                }}
+              />
+              <StepTimers
+                recipeId={id}
+                recipeTitle={recipe.title}
+                stepIndex={index}
+                step={step}
+              />
+            </View>
           ))}
           {!parsed.steps.length && (
             <Text selectable style={s.body}>
@@ -283,7 +295,7 @@ export function RecipeDetailScreen() {
           {parsed.steps.length > 0 &&
             checked.length === parsed.steps.length && (
               <View style={{ paddingTop: 24, gap: 16 }}>
-                <Text style={s.heading}>Dinner is served.</Text>
+                <Text style={s.heading}>All steps complete</Text>
                 <Button
                   icon="camera"
                   title="Save a meal photo"
@@ -363,7 +375,12 @@ export function ImportListScreen() {
             items: included.map((line) => ({
               id: newId(),
               name: line,
-              category: categoryFor(line),
+              category: categoryFor(
+                line,
+                null,
+                null,
+                previous.categoryCorrections,
+              ),
               checked: false,
             })),
           },
@@ -538,12 +555,10 @@ export function InspirationScreen() {
   return (
     <Page>
       <Icon name="sparkles" size={38} />
-      <Text style={s.title}>What’s for dinner?</Text>
+      <Text style={s.title}>Pantry matches</Text>
       <View style={s.card}>
-        <Text style={s.heading}>A little inspiration, coming soon.</Text>
         <Text style={s.body}>
-          AI recipe creation will live here. For now, rediscover saved recipes
-          that use ingredients you already have.
+          Saved recipes that use ingredients in your pantry.
         </Text>
       </View>
       <DataNotice

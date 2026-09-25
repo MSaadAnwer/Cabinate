@@ -28,6 +28,19 @@ export interface LocalData {
   meals: PhotoEntry[];
   receipts: Receipt[];
   steps: Record<string, number[]>;
+  categoryCorrections?: Record<string, Category>;
+  timers?: CookingTimer[];
+}
+
+export interface CookingTimer {
+  id: string;
+  recipeId: string;
+  recipeTitle: string;
+  stepIndex: number;
+  durationIndex: number;
+  seconds: number;
+  endsAt: number;
+  notificationId?: string;
 }
 
 const record = (value: unknown): value is Record<string, unknown> =>
@@ -81,6 +94,31 @@ export function parseLocalData(
       (receipt) =>
         identified(receipt) && text(receipt.date) && text(receipt.uri),
     ) ||
+    (value.categoryCorrections !== undefined &&
+      (!record(value.categoryCorrections) ||
+        !Object.values(value.categoryCorrections).every(
+          (category) => text(category) && categories.includes(category),
+        ))) ||
+    (value.timers !== undefined &&
+      (!Array.isArray(value.timers) ||
+        !unique(
+          value.timers,
+          (timer) =>
+            identified(timer) &&
+            text(timer.recipeId) &&
+            text(timer.recipeTitle) &&
+            Number.isInteger(timer.stepIndex) &&
+            (timer.stepIndex as number) >= 0 &&
+            Number.isInteger(timer.durationIndex) &&
+            (timer.durationIndex as number) >= 0 &&
+            typeof timer.seconds === "number" &&
+            Number.isFinite(timer.seconds) &&
+            timer.seconds > 0 &&
+            typeof timer.endsAt === "number" &&
+            Number.isFinite(timer.endsAt) &&
+            timer.endsAt > 0 &&
+            (timer.notificationId === undefined || text(timer.notificationId)),
+        ))) ||
     !record(value.steps) ||
     !Object.values(value.steps).every(
       (steps) =>

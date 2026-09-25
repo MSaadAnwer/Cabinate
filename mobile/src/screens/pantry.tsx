@@ -45,7 +45,7 @@ export default function PantryScreen() {
           <RefreshControl refreshing={loading && loaded} onRefresh={reload} />
         }
       >
-        <Text style={s.title}>Your pantry.</Text>
+        <Text style={s.title}>Pantry</Text>
         <DataNotice
           variant="pantry"
           subject="your pantry"
@@ -179,7 +179,7 @@ export function InventoryScreen() {
         <RefreshControl refreshing={loading && loaded} onRefresh={reload} />
       }
     >
-      <Text style={s.title}>{category || "All the good things."}</Text>
+      <Text style={s.title}>{category || "All items"}</Text>
       <SearchField
         label="Find an item"
         placeholder="Search your pantry"
@@ -194,7 +194,7 @@ export function InventoryScreen() {
       />
       {!items.length && loaded && !loading && !search && (
         <Empty
-          title="A little room to grow"
+          title="No items"
           text="Add your first item using the button below."
         />
       )}

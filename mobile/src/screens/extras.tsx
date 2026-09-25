@@ -40,7 +40,7 @@ export function NotificationsScreen() {
         <RefreshControl refreshing={loading && loaded} onRefresh={reload} />
       }
     >
-      <Text style={s.title}>A little heads-up.</Text>
+      <Text style={s.title}>Notifications</Text>
       <Text style={s.eyebrow}>Use soon · next 7 days</Text>
       <DataNotice
         loading={loading}
@@ -94,8 +94,7 @@ export function AccountScreen() {
       <Page>
         <View style={{ alignItems: "center", paddingVertical: 32, gap: 18 }}>
           <TomatoMark size={65} />
-          <Text style={s.title}>Your little corner.</Text>
-          <Text style={s.muted}>Welcome, home cook.</Text>
+          <Text style={s.title}>Account</Text>
         </View>
         <View style={s.card}>
           <Text style={s.heading}>Account details</Text>

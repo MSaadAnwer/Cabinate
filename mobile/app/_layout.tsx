@@ -5,12 +5,16 @@ import { Text, View } from "react-native";
 import { KitchenProvider, useKitchen } from "../src/state/kitchen-store";
 import { colors, IconButton } from "../src/components/ui";
 import { TomatoMark } from "../src/components/art";
+import { CookingTimerProvider } from "../src/state/cooking-timers";
+import { TimerTray } from "../src/components/cooking-timers";
 
 export default function Layout() {
   return (
     <KitchenProvider>
       <FeedbackProvider>
-        <Navigator />
+        <CookingTimerProvider>
+          <Navigator />
+        </CookingTimerProvider>
       </FeedbackProvider>
     </KitchenProvider>
   );
@@ -140,6 +144,7 @@ function Navigator() {
           />
         ))}
       </Stack>
+      <TimerTray />
     </View>
   );
 }

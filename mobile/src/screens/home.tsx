@@ -38,28 +38,16 @@ export default function HomeScreen() {
           }}
         >
           <TomatoMark size={46} />
-          <Text style={s.eyebrow}>A little less waste. A little more joy.</Text>
           <Text
             style={[
               s.title,
               { fontSize: 43, lineHeight: 49, textAlign: "center" },
             ]}
           >
-            Welcome to{"\n"}Cabinate.
-          </Text>
-          <Text
-            style={[
-              s.body,
-              { color: "#818875", textAlign: "center", fontSize: 16 },
-            ]}
-          >
-            Good things start in your kitchen.
+            Cabinate
           </Text>
         </View>
         <View style={{ gap: 14, alignItems: "center", paddingBottom: 6 }}>
-          <Text style={[s.heading, { fontSize: 21 }]}>
-            What’s in your Cabinate?
-          </Text>
           <View
             style={{ width: "100%", maxWidth: 450, aspectRatio: 354 / 222 }}
           >
@@ -124,9 +112,6 @@ export default function HomeScreen() {
               </Pressable>
             ))}
           </View>
-          <Text style={[s.muted, { fontSize: 11, letterSpacing: 0.5 }]}>
-            Stock thoughtfully. Cook happily.
-          </Text>
         </View>
       </Page>
     </View>

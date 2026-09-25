@@ -87,7 +87,7 @@ export default function CalendarScreen() {
     try {
       await persistPhoto({
         ...pendingPhoto,
-        caption: caption.trim() || "A meal to remember",
+        caption: caption.trim() || "Meal photo",
       });
     } catch {
       setError(
@@ -110,7 +110,7 @@ export default function CalendarScreen() {
           id: newId(),
           uri,
           date: selected,
-          caption: caption.trim() || "A meal to remember",
+          caption: caption.trim() || "Meal photo",
         };
         setPendingPhoto(photo);
         await persistPhoto(photo);
@@ -175,8 +175,7 @@ export default function CalendarScreen() {
           onPress={() => void removePhoto()}
         />
       </Sheet>
-      <Text style={s.eyebrow}>Your kitchen, day by day</Text>
-      <Text style={s.title}>Little moments.{"\n"}Lovely meals.</Text>
+      <Text style={s.title}>Calendar</Text>
       <View style={s.row}>
         <IconButton
           name="back"

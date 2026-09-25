@@ -23,6 +23,7 @@ import { useKitchen } from "../state/kitchen-store";
 import {
   categories,
   categoryFor,
+  groceryKey,
   newId,
   type Category,
 } from "../utils/kitchen";
@@ -32,12 +33,12 @@ export default function ListsScreen() {
   return (
     <View style={{ flex: 1 }}>
       <Page>
-        <Text style={s.title}>Your lists.</Text>
+        <Text style={s.title}>Lists</Text>
         {!ready && <LoadingRows label="Opening your lists" />}
         {ready && !data.lists.length && (
           <Empty
-            title="What are we picking up?"
-            text="A list for the week, a favorite recipe, or a quick stop at the store. Make it yours."
+            title="No lists yet"
+            text="Create a list or import ingredients from a recipe."
           />
         )}
         {data.lists.map((list) => (
@@ -129,7 +130,12 @@ export function NewListScreen() {
               .map((line) => ({
                 id: newId(),
                 name: line,
-                category: categoryFor(line),
+                category: categoryFor(
+                  line,
+                  null,
+                  null,
+                  data.categoryCorrections,
+                ),
                 checked: false,
               })),
           },
@@ -164,7 +170,7 @@ export function NewListScreen() {
       }
     >
       {draft.guard}
-      <Text style={s.title}>Start a little list.</Text>
+      <Text style={s.title}>New list</Text>
       <Field
         inputRef={nameInput}
         autoFocus
@@ -191,7 +197,8 @@ export function NewListScreen() {
         editable={!busy}
       />
       <Text style={s.muted}>
-        We’ll group your items by aisle. You can change a category later.
+        Items are grouped by aisle. Category corrections are remembered on this
+        device.
       </Text>
     </FormPage>
   );
@@ -220,6 +227,12 @@ export function ListDetailScreen() {
     try {
       await update((previous) => ({
         ...previous,
+        categoryCorrections: category
+          ? {
+              ...previous.categoryCorrections,
+              [groceryKey(itemName)]: category,
+            }
+          : previous.categoryCorrections,
         lists: previous.lists.map((value) =>
           value.id === id
             ? {
@@ -229,7 +242,14 @@ export function ListDetailScreen() {
                   {
                     id: newId(),
                     name: itemName.trim(),
-                    category: category || categoryFor(itemName),
+                    category:
+                      category ||
+                      categoryFor(
+                        itemName,
+                        null,
+                        null,
+                        previous.categoryCorrections,
+                      ),
                     checked: false,
                   },
                 ],
@@ -280,6 +300,12 @@ export function ListDetailScreen() {
     try {
       await update((previous) => ({
         ...previous,
+        categoryCorrections: {
+          ...previous.categoryCorrections,
+          [groceryKey(
+            list?.items.find((item) => item.id === aisleFor)?.name || "",
+          )]: value,
+        },
         lists: previous.lists.map((l) =>
           l.id === id
             ? {
@@ -357,7 +383,15 @@ export function ListDetailScreen() {
                 style={{ minHeight: 44, justifyContent: "center" }}
               >
                 <Text style={s.muted}>
-                  Aisle: {category || categoryFor(itemName)} · Change
+                  Aisle:{" "}
+                  {category ||
+                    categoryFor(
+                      itemName,
+                      null,
+                      null,
+                      data.categoryCorrections,
+                    )}{" "}
+                  · Change
                 </Text>
               </Touch>
               <Button
@@ -454,7 +488,8 @@ export function ListDetailScreen() {
         {categories.map((value) => {
           const selected =
             (aisleFor === "composer"
-              ? category || categoryFor(itemName)
+              ? category ||
+                categoryFor(itemName, null, null, data.categoryCorrections)
               : list?.items.find((i) => i.id === aisleFor)?.category) === value;
           return (
             <Touch

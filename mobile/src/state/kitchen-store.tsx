@@ -112,7 +112,16 @@ function useStore() {
     },
     [ready],
   );
+  const commit = useCallback(
+    (change: (previous: LocalData) => LocalData) => {
+      if (!ready)
+        return Promise.reject(new Error("Saved data is still loading."));
+      return persistence.current!.commit(change);
+    },
+    [ready],
+  );
   return {
+    commit,
     pantry: pantryState.items,
     pantryState,
     upsertPantryItem: pantryCollection.upsert,
@@ -131,7 +140,9 @@ function useStore() {
     reload,
   };
 }
-export const KitchenContext = createContext<ReturnType<typeof useStore> | null>(null);
+export const KitchenContext = createContext<ReturnType<typeof useStore> | null>(
+  null,
+);
 export function KitchenProvider({ children }: { children: ReactNode }) {
   return <KitchenContext value={useStore()}>{children}</KitchenContext>;
 }

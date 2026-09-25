@@ -21,8 +21,8 @@ Sign in to the same Expo account on the PC and in Expo Go. Connect the phone to 
 
 - Home: quiet farm silhouettes, notifications/calendar shortcuts, and four uneven tomato sections.
 - Pantry: illustrated categories, All/search, manual item creation with expiration dates, receipt camera/library capture, and saved product links.
-- List: multiple named lists, automatic aisle grouping with manual category correction, item checks, and recipe import with optional pantry matching and a review step.
-- Cookbook: search, manual recipes, video-link capture inbox, ingredients, persistent cooking checklists, and pantry matches from existing recipes.
+- List: multiple named lists, phrase-aware aisle grouping with plural/quantity normalization, remembered category corrections, item checks, and recipe import with optional pantry matching and a review step. Corrections are saved on this device and apply to future additions and imports; existing saved aisles remain unchanged until edited.
+- Cookbook: search, manual recipes, video-link capture inbox, ingredients, persistent cooking checklists, and pantry matches from existing recipes. Timed steps offer countdowns for seconds, minutes and hours, including written numbers and compound durations. Ranges use the smaller duration. Multiple timers can run together, persist across navigation/restarts, and remain visible in the timer tray. Native local notifications alert at completion when permitted; otherwise keep the app open for the in-app alert.
 - Calendar: month navigation, daily meal photos/captions, and pantry expiration markers.
 - Notifications: expired items, the next seven days of expirations, and U.S. FDA recall notices with conservative potential pantry matches and visible source freshness.
 - Account: placeholder profile and capture inbox.

@@ -24,6 +24,7 @@ export function categoryFor(
   name: string,
   category?: string | null,
   location?: string | null,
+  corrections?: Record<string, Category>,
 ): Category {
   if (location?.toUpperCase() === "FREEZER") return "Frozen";
   const aliases: Record<string, Category> = {
@@ -38,34 +39,104 @@ export function categoryFor(
     return aliases[category.toUpperCase()];
   if (category && categories.includes(category as Category))
     return category as Category;
-  const text = name.toLowerCase();
-  if (/\b(frozen|ice cream)\b/.test(text)) return "Frozen";
-  if (
-    /\b(milk|cheese|yogurt|butter|cream|eggs?|feta|parmesan|parmigiano)\b/.test(
-      text,
-    )
-  )
-    return "Dairy";
-  if (/\b(chicken|beef|salmon|fish|pork|turkey|shrimp|bacon|tuna)\b/.test(text))
-    return "Meat & fish";
-  if (
-    /\b(bread|pasta|rice|oats|flour|quinoa|fettuccine|tortillas?)\b/.test(text)
-  )
-    return "Bread & grains";
-  if (
-    /\b(tomato\w*|onion\w*|garlic|pepper\w*|lemon\w*|lime\w*|apple\w*|banana\w*|spinach|avocado\w*|berries|blueberries|raspberries|asparagus|cilantro|parsley|dill|potato\w*|carrot\w*|lettuce)\b/.test(
-      text,
-    )
-  )
-    return "Produce";
-  if (
-    /\b(oil|salt|spice\w*|honey|beans?|chickpeas?|cans?|cumin|paprika|tahini|sugar|syrup|seeds?)\b/.test(
-      text,
-    )
-  )
-    return "Cupboard";
+  const key = groceryKey(name);
+  if (corrections && Object.hasOwn(corrections, key)) return corrections[key];
+  const text = ` ${key} `;
+  if (text.includes(" frozen ") || text.includes(" ice cream "))
+    return "Frozen";
+  // Match whole words and prefer specific products over their ingredients:
+  // peanut butter, orange juice and coconut milk are not dairy or produce.
+  const matches = foodVocabulary.filter(({ phrase }) =>
+    text.includes(` ${phrase} `),
+  );
+  matches.sort(
+    (a, b) =>
+      b.phrase.split(" ").length - a.phrase.split(" ").length ||
+      b.priority - a.priority,
+  );
+  if (matches.length) return matches[0].category;
   return "Other";
 }
+
+const singulars: Record<string, string> = {
+  tomatoes: "tomato",
+  potatoes: "potato",
+  sweetcorn: "corn",
+  chillies: "chili",
+  chilies: "chili",
+  leaves: "leaf",
+  loaves: "loaf",
+  knives: "knife",
+  mangoes: "mango",
+  avocados: "avocado",
+};
+/** Same product spelling for plurals, accents, quantities and common descriptors. */
+export function groceryKey(name: string): string {
+  return name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\d+(?:[./]\d+)?/g, " ")
+    .replace(/[^a-z\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(
+      (word) =>
+        singulars[word] ||
+        (word.endsWith("ies")
+          ? `${word.slice(0, -3)}y`
+          : /(ches|shes|xes|zes)$/.test(word)
+            ? word.slice(0, -2)
+            : word.endsWith("s") && !/(ss|us|is)$/.test(word)
+              ? word.slice(0, -1)
+              : word),
+    )
+    .filter(
+      (word) =>
+        !/^(a|an|of|fresh|organic|large|small|medium|chopped|diced|sliced|whole|cup|tbsp|tsp|teaspoon|tablespoon|lb|oz|kg|g|ml|liter|litre|pound|ounce|pack|bag|bunch)$/.test(
+          word,
+        ),
+    )
+    .join(" ");
+}
+
+const foodGroups: [Category, number, string][] = [
+  [
+    "Produce",
+    0,
+    "apple|orange|mandarin|clementine|tangerine|grapefruit|lemon|lime|banana|pear|peach|nectarine|plum|apricot|cherry|grape|strawberry|blueberry|raspberry|blackberry|berry|cranberry|mango|pineapple|melon|watermelon|cantaloupe|kiwi|papaya|pomegranate|fig|date|avocado|tomato|potato|sweet potato|yam|onion|shallot|garlic|ginger|carrot|celery|lettuce|spinach|kale|cabbage|broccoli|cauliflower|cucumber|zucchini|courgette|squash|pumpkin|eggplant|aubergine|pepper|chili|jalapeno|mushroom|asparagus|artichoke|beet|beetroot|radish|turnip|parsnip|leek|fennel|okra|corn|pea|green bean|snap pea|brussels sprout|cilantro|coriander|parsley|basil|dill|mint|rosemary|thyme|sage|chive|scallion|spring onion|arugula|rocket",
+  ],
+  [
+    "Dairy",
+    1,
+    "milk|cheese|yogurt|yoghurt|butter|cream|egg|feta|parmesan|parmigiano|mozzarella|cheddar|ricotta|gouda|brie|kefir|buttermilk|sour cream|cream cheese|cottage cheese|heavy cream",
+  ],
+  [
+    "Meat & fish",
+    2,
+    "chicken|beef|salmon|fish|pork|turkey|shrimp|prawn|bacon|tuna|lamb|steak|sausage|ham|duck|cod|haddock|tilapia|trout|sardine|mackerel|crab|lobster|mussel|clam|scallop|ground beef|ground turkey",
+  ],
+  [
+    "Bread & grains",
+    3,
+    "bread|sourdough|bagel|baguette|roll|pita|naan|tortilla|croissant|pasta|rice|oat|flour|quinoa|fettuccine|spaghetti|penne|macaroni|noodle|couscous|bulgur|barley|cereal|granola|oatmeal",
+  ],
+  [
+    "Cupboard",
+    4,
+    "can|canned|tin|tinned|jarred|oil|salt|spice|cinnamon|nutmeg|turmeric|oregano|clove|honey|bean|chickpea|lentil|cumin|paprika|tahini|sugar|syrup|seed|nut|almond|walnut|cashew|peanut|pistachio|pecan|vinegar|sauce|ketchup|mustard|mayonnaise|jam|jelly|raisin|dried fruit|chocolate|cocoa|coffee|tea|soda|sparkling water|cracker|chip|juice|stock|broth|soup|tofu|tempeh|baking powder|baking soda|peanut butter|almond butter|coconut milk|coconut cream|almond milk|oat milk|soy milk|rice milk|orange juice|apple juice|lemon juice|lime juice|tomato sauce|tomato paste|chicken stock|chicken broth|beef stock|beef broth|fish sauce|soy sauce|rice vinegar|black pepper|white pepper|chili powder|garlic powder|onion powder|dried basil|dried thyme|dried rosemary|dried dill|dried parsley|canned tuna|canned salmon|canned tomato|canned corn|canned bean",
+  ],
+  [
+    "Other",
+    5,
+    "can opener|paper towel|toilet paper|dish soap|hand soap|laundry detergent|trash bag|cat food|dog food|apple cider soap",
+  ],
+];
+const foodVocabulary = foodGroups.flatMap(([category, priority, words]) =>
+  words
+    .split("|")
+    .map((word) => ({ category, priority, phrase: groceryKey(word) })),
+);
 
 export function parseRecipe(raw: string): {
   ingredients: string[];
