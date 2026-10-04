@@ -1,5 +1,5 @@
 import type { PantryItem, CreatePantryItemRequest, UpdatePantryItemRequest } from '../types/pantry';
-import type { Recipe, CreateRecipeRequest, UpdateRecipeRequest } from '../types/recipe';
+import type { Recipe, CreateRecipeRequest, UpdateRecipeRequest, GeneratedRecipe } from '../types/recipe';
 import type { RawIngestPayload, IngestPayloadRequest } from '../types/ingest';
 import type { ApiErrorResponse, SeedResponse } from '../types/common';
 
@@ -87,6 +87,21 @@ export const pantryApi = {
 };
 
 export const recipeApi = {
+  generate: async (excludeTitles: string[], signal: AbortSignal): Promise<GeneratedRecipe[]> => {
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    signal.addEventListener('abort', abort, { once: true });
+    if (signal.aborted) abort();
+    const timer = setTimeout(abort, 65000);
+    try {
+      return await request<GeneratedRecipe[]>('/recipes/generate', {
+        method: 'POST', body: JSON.stringify({ excludeTitles }), signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timer);
+      signal.removeEventListener('abort', abort);
+    }
+  },
   getAll: (search?: string): Promise<Recipe[]> => {
     const query = search ? `?search=${encodeURIComponent(search)}` : '';
     return request<Recipe[]>(`/recipes${query}`);

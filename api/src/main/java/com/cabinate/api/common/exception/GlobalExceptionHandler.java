@@ -17,6 +17,24 @@ import lombok.extern.slf4j.Slf4j;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(com.cabinate.api.recipe.RecipeGenerationException.class)
+    public ResponseEntity<ErrorResponse> handleRecipeGeneration(
+            com.cabinate.api.recipe.RecipeGenerationException ex, HttpServletRequest request) {
+        HttpStatus status = switch (ex.reason()) {
+            case EMPTY_PANTRY -> HttpStatus.UNPROCESSABLE_ENTITY;
+            case UNAVAILABLE -> HttpStatus.SERVICE_UNAVAILABLE;
+            case BUSY -> HttpStatus.TOO_MANY_REQUESTS;
+            case INVALID_RESPONSE -> HttpStatus.BAD_GATEWAY;
+        };
+        String message = ex.getMessage();
+        if (ex.reason() == com.cabinate.api.recipe.RecipeGenerationException.Reason.UNAVAILABLE) {
+            log.warn("Recipe generation unavailable [{}]: {}", request.getRequestURI(), ex.getMessage());
+            message = "Recipe suggestions are unavailable right now. Please try again later.";
+        }
+        return ResponseEntity.status(status).body(ErrorResponse.of(status.value(), status.getReasonPhrase(),
+                message, request.getRequestURI()));
+    }
+
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleResourceNotFoundException(
             ResourceNotFoundException ex,
@@ -82,7 +100,7 @@ public class GlobalExceptionHandler {
         ErrorResponse errorResponse = ErrorResponse.of(
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(),
-                ex.getMessage() != null ? ex.getMessage() : "An unexpected error occurred",
+                "Something went wrong. Please try again later.",
                 request.getRequestURI());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
     }

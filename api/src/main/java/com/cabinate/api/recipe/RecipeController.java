@@ -26,6 +26,13 @@ import lombok.RequiredArgsConstructor;
 public class RecipeController {
 
     private final RecipeService recipeService;
+    private final RecipeGenerationService generationService;
+
+    @PostMapping("/generate")
+    public List<com.cabinate.api.recipe.dto.GeneratedRecipeResponse> generateRecipes(
+            @Valid @RequestBody com.cabinate.api.recipe.dto.GenerateRecipesRequest request) {
+        return generationService.generate(request.excludeTitles());
+    }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

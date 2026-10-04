@@ -8,6 +8,7 @@ import type {
 } from "../types/pantry";
 import type {
   CreateRecipeRequest,
+  GeneratedRecipe,
   Recipe,
   UpdateRecipeRequest,
 } from "../types/recipe";
@@ -51,6 +52,12 @@ export const pantryApi = {
 };
 
 export const recipeApi = {
+  generate: (excludeTitles: string[], signal?: AbortSignal): Promise<GeneratedRecipe[]> =>
+    requestJson<GeneratedRecipe[]>(`${BASE_URL}/recipes/generate`, {
+      method: "POST",
+      body: JSON.stringify({ excludeTitles }),
+      signal,
+    }, 65000),
   getAll: (search?: string): Promise<Recipe[]> => {
     const query = search ? `?search=${encodeURIComponent(search)}` : "";
     return request<Recipe[]>(`/recipes${query}`);

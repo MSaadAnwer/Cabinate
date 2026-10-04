@@ -1,6 +1,16 @@
 server:
   port: 8080
 
+logging:
+  file:
+    name: target/cabinate-api.log
+
+cabinate:
+  recipes:
+    bedrock-token: ${AWS_BEARER_TOKEN_BEDROCK:}
+    region: ${AWS_REGION:us-east-1}
+    model: ${CABINATE_RECIPE_MODEL:amazon.nova-micro-v1:0}
+
 spring:
   application:
     name: cabinate-api

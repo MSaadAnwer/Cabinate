@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { CreateRecipeRequest } from '../../types/recipe';
 import { X, Plus } from 'lucide-react';
+import { RecipeGenerator } from './RecipeGenerator';
 
 interface RecipeCreateModalProps {
   isOpen: boolean;
@@ -72,6 +73,17 @@ export const RecipeCreateModal: React.FC<RecipeCreateModalProps> = ({
           </div>
         )}
 
+        <RecipeGenerator disabled={isSubmitting} hasDraft={!!title || !!rawText || !!description}
+          onChoose={(recipe) => {
+            setTitle(recipe.title);
+            setDescription(recipe.description);
+            setSourceUrl('');
+            setPrepTimeMinutes(recipe.prepTimeMinutes);
+            setCookTimeMinutes(recipe.cookTimeMinutes);
+            setServings(recipe.servings);
+            setRawText(`Ingredients:\n${recipe.ingredients.map(item => `- ${item}`).join('\n')}\n\nInstructions:\n${recipe.steps.map((step, i) => `${i + 1}. ${step}`).join('\n')}`);
+            setErrorMessage('');
+          }} />
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label className="form-label">Recipe Title *</label>

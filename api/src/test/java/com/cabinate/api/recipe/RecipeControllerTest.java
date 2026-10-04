@@ -38,8 +38,51 @@ class RecipeControllerTest {
     @Mock
     private RecipeService recipeService;
 
+    @Mock
+    private RecipeGenerationService generationService;
+
     @InjectMocks
     private RecipeController recipeController;
+
+    @Test
+    void generateRecipesReturnsThreeAndPassesExclusions() throws Exception {
+        var idea = new com.cabinate.api.recipe.dto.GeneratedRecipeResponse("Eggs", "A meal",
+                List.of("2 eggs"), List.of("Cook"), 5, 10, 2);
+        when(generationService.generate(List.of("Old recipe"))).thenReturn(List.of(idea, idea, idea));
+        mockMvc.perform(post("/api/v1/recipes/generate").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"excludeTitles\":[\"Old recipe\"]}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(3));
+    }
+
+    @Test
+    void generateRecipesValidatesInputAndReportsEmptyPantry() throws Exception {
+        mockMvc.perform(post("/api/v1/recipes/generate").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"excludeTitles\":[\"\"]}"))
+                .andExpect(status().isBadRequest());
+        when(generationService.generate(List.of())).thenThrow(new RecipeGenerationException(
+                RecipeGenerationException.Reason.EMPTY_PANTRY, "Add ingredients first"));
+        mockMvc.perform(post("/api/v1/recipes/generate").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.message").value("Add ingredients first"));
+    }
+
+    @Test
+    void unavailableGenerationKeepsConfigurationDetailsOnServer() throws Exception {
+        when(generationService.generate(List.of())).thenThrow(new RecipeGenerationException(
+                RecipeGenerationException.Reason.UNAVAILABLE,
+                "Recipe generation is not configured yet. Connect Amazon Bedrock on the server to enable it."));
+        mockMvc.perform(post("/api/v1/recipes/generate").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.message").value(
+                        "Recipe suggestions are unavailable right now. Please try again later."));
+    }
+
+    @Test
+    void unexpectedFailureKeepsInternalDetailsOnServer() throws Exception {
+        when(generationService.generate(List.of())).thenThrow(new IllegalStateException("internal connection details"));
+        mockMvc.perform(post("/api/v1/recipes/generate").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.message").value("Something went wrong. Please try again later."));
+    }
 
     @BeforeEach
     void setUp() {

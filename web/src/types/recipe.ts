@@ -1,3 +1,13 @@
+export interface GeneratedRecipe {
+  title: string;
+  description: string;
+  ingredients: string[];
+  steps: string[];
+  prepTimeMinutes: number;
+  cookTimeMinutes: number;
+  servings: number;
+}
+
 export interface Recipe {
   id: string;
   title: string;

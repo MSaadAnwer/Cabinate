@@ -13,6 +13,7 @@ import {
 import { useFeedback } from "../components/feedback";
 import { useFormDraft } from "../components/form-draft";
 import DateField from "../components/date-field";
+import { RecipeGenerator } from "../components/recipe-generator";
 import { pantryApi, recipeApi, ingestApi } from "../services/api";
 import { capturePhoto } from "../services/photos";
 import { useKitchen } from "../state/kitchen-store";
@@ -243,6 +244,8 @@ export function AddRecipeScreen() {
   const { sourceUrl = "" } = useLocalSearchParams<{ sourceUrl?: string }>();
   const { upsertRecipe } = useKitchen();
   const { notify } = useFeedback();
+  const [generatedTimes, setGeneratedTimes] = useState<{ prepTimeMinutes: number; cookTimeMinutes: number }>();
+  const [generated, setGenerated] = useState(false);
   const [title, setTitle] = useState(""),
     [description, setDescription] = useState(""),
     [ingredients, setIngredients] = useState(""),
@@ -289,10 +292,11 @@ export function AddRecipeScreen() {
     Keyboard.dismiss();
     try {
       const item = await recipeApi.create({
+        ...generatedTimes,
         title: title.trim(),
         description: description.trim() || undefined,
         servings: Number(servings),
-        sourceUrl: sourceUrl || undefined,
+        sourceUrl: generated ? undefined : sourceUrl || undefined,
         rawText: `Ingredients:\n${ingredients
           .split("\n")
           .filter((line) => line.trim())
@@ -335,14 +339,27 @@ export function AddRecipeScreen() {
     >
       {draft.guard}
       <Text style={s.title}>Add recipe</Text>
-      {!!sourceUrl && (
+      <RecipeGenerator disabled={busy} hasDraft={!!title || !!ingredients || !!steps || !!description}
+        onChoose={(recipe) => {
+          setTitle(recipe.title);
+          setDescription(recipe.description);
+          setIngredients(recipe.ingredients.join("\n"));
+          setSteps(recipe.steps.join("\n"));
+          setServings(String(recipe.servings));
+          setGeneratedTimes({ prepTimeMinutes: recipe.prepTimeMinutes, cookTimeMinutes: recipe.cookTimeMinutes });
+          setGenerated(true);
+          setErrors({});
+          setError("");
+          notify("Recipe added to your draft. Review it below, then save.");
+        }} />
+      <Text style={s.heading}>{generated ? "Review your recipe" : "Write your own"}</Text>
+      {!!sourceUrl && !generated && (
         <Text selectable style={s.muted}>
           From: {sourceUrl}
         </Text>
       )}
       <Field
         inputRef={titleInput}
-        autoFocus
         label="Recipe title"
         placeholder="Sunday’s tomato pasta"
         value={title}
