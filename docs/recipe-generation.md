@@ -33,6 +33,10 @@ and automatic tool selection, following the
 Regeneration supplies previously suggested titles to request different dishes.
 Partial model responses are collected across at most five calls, with collected
 titles excluded from subsequent calls. Extra suggestions are limited to three.
+Each suggestion is checked before collection. Invalid ingredient IDs, over-stock
+amounts, malformed fields, and repeated instructions are discarded individually;
+valid ideas remain while the next call requests replacements. Kitchen quantities
+must be converted to the pantry's units (for example, one cup is 0.0625 gallon).
 Temperature `0.4` allows variation; explicit exclusions prevent repeated titles.
 Short inventory identifiers with an allowed-value schema prevent confusion between
 similar database IDs. Common unavailable staples mentioned in recipe text are

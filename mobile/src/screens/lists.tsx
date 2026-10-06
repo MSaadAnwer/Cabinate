@@ -34,7 +34,6 @@ export default function ListsScreen() {
   return (
     <View style={{ flex: 1 }}>
       <Page>
-        <Text style={s.title}>Lists</Text>
         {!ready && <LoadingRows label="Opening your lists" />}
         {ready && !data.lists.length && (
           <Empty

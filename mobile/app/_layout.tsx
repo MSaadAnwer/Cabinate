@@ -4,7 +4,6 @@ import { StatusBar } from "expo-status-bar";
 import { Text, View } from "react-native";
 import { KitchenProvider, useKitchen } from "../src/state/kitchen-store";
 import { colors, IconButton } from "../src/components/ui";
-import { TomatoMark } from "../src/components/art";
 import { CookingTimerProvider } from "../src/state/cooking-timers";
 import { TimerTray } from "../src/components/cooking-timers";
 import { AuthProvider, useAuth } from "../src/state/auth";
@@ -51,7 +50,7 @@ function Navigator() {
           headerTintColor: colors.ink,
           headerShadowVisible: false,
           headerBackButtonDisplayMode: "minimal",
-          headerTitleStyle: { fontFamily: "Georgia" },
+          headerTitleStyle: { fontFamily: "Georgia", fontSize: 26 },
           headerRight: () => (
             <IconButton
               name="home"
@@ -64,37 +63,24 @@ function Navigator() {
         <Stack.Screen
           name="index"
           options={{
-            title: "Cabinate",
-            headerTitle: () => (
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 7 }}
-              >
-                <TomatoMark size={27} />
-                <Text
-                  style={{
-                    fontFamily: "Georgia",
-                    fontSize: 23,
-                    color: colors.ink,
-                  }}
-                >
-                  cabinate
-                </Text>
-              </View>
+            title: "",
+            headerTitle: "",
+            headerTitleAlign: "center",
+            headerLeft: () => (
+              <IconButton
+                name="bell"
+                size={27}
+                label="Notifications"
+                onPress={() => router.push("/notifications")}
+              />
             ),
-            headerTitleAlign: "left",
             headerRight: () => (
-              <View style={{ flexDirection: "row", gap: 5 }}>
-                <IconButton
-                  name="bell"
-                  label="Notifications"
-                  onPress={() => router.push("/notifications")}
-                />
                 <IconButton
                   name="calendar"
+                  size={27}
                   label="Meal calendar"
                   onPress={() => router.push("/calendar")}
                 />
-              </View>
             ),
           }}
         />
@@ -113,7 +99,7 @@ function Navigator() {
         />
         <Stack.Screen
           name="inspiration"
-          options={{ title: "Dinner inspiration" }}
+          options={{ title: "Inspiration" }}
         />
         <Stack.Screen name="captures" options={{ title: "Capture inbox" }} />
         {[

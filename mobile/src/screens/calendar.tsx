@@ -175,7 +175,6 @@ export default function CalendarScreen() {
           onPress={() => void removePhoto()}
         />
       </Sheet>
-      <Text style={s.title}>Calendar</Text>
       <View style={s.row}>
         <IconButton
           name="back"

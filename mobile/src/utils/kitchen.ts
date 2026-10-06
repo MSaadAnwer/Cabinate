@@ -58,6 +58,13 @@ export function categoryFor(
   return "Other";
 }
 
+export function suggestedPantryCategory(item: Pick<PantryItem, "name" | "category" | "location">, corrections?: Record<string, Category>): Category | null {
+  const suggested = categoryFor(item.name, undefined, item.location, corrections);
+  return suggested !== "Other" && suggested !== categoryFor(item.name, item.category, item.location)
+    ? suggested
+    : null;
+}
+
 const singulars: Record<string, string> = {
   tomatoes: "tomato",
   potatoes: "potato",

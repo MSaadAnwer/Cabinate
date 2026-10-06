@@ -10,6 +10,7 @@ export type IconName =
   | "bell"
   | "calendar"
   | "plus"
+  | "minus"
   | "camera"
   | "link"
   | "edit"
@@ -31,6 +32,7 @@ const iconPaths: Record<IconName, string> = {
   calendar:
     "M4 5h16v16H4zM4 10h16M8 3v4M16 3v4M8 14h1M12 14h1M16 14h1M8 18h1M12 18h1",
   plus: "M12 5v14M5 12h14",
+  minus: "M5 12h14",
   camera: "M3 7h5l2-3h4l2 3h5v13H3zM16 13a4 4 0 1 0-8 0 4 4 0 0 0 8 0",
   link: "M10 13a5 5 0 0 0 7 .5l3-3a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-7-.5l-3 3a5 5 0 0 0 7 7l2-2",
   edit: "M12 4H4v17h16v-8M10 14l1-4L19 2l3 3-8 8-4 1M16 5l3 3",

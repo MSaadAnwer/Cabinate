@@ -13,6 +13,7 @@ import {
 import { useFeedback } from "../components/feedback";
 import { useFormDraft } from "../components/form-draft";
 import DateField from "../components/date-field";
+import { stockQuantity } from "../utils/pantry-quantity";
 import { RecipeGenerator } from "../components/recipe-generator";
 import { pantryApi, recipeApi, ingestApi } from "../services/api";
 import { capturePhoto } from "../services/photos";
@@ -35,6 +36,11 @@ export function AddPantryScreen() {
   const [category, setCategory] = useState(params.category || ""),
     [date, setDate] = useState(""),
     [location, setLocation] = useState("CABINET");
+  const [packSize, setPackSize] = useState("1");
+  const [contentsUnit, setContentsUnit] = useState("pcs");
+  const isPack = ["pack", "packs", "box", "boxes", "bag", "bags"].includes(unit.trim().toLowerCase());
+  let stock: { quantity: number; unit: string } | undefined;
+  try { stock = stockQuantity(Number(quantity), unit, Number(packSize), contentsUnit); } catch {}
   const [details, setDetails] = useState(false),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
@@ -49,7 +55,7 @@ export function AddPantryScreen() {
       unit !== "pcs" ||
       category !== (params.category || "") ||
       !!date ||
-      location !== "CABINET",
+      location !== "CABINET" || packSize !== "1" || contentsUnit !== "pcs",
     busy,
   );
   const save = async () => {
@@ -59,6 +65,9 @@ export function AddPantryScreen() {
     if (!unit.trim()) invalid.unit = "Add a unit, such as pcs, g or ml.";
     if (!Number.isFinite(Number(quantity)) || Number(quantity) <= 0)
       invalid.quantity = "Use a quantity greater than zero.";
+    if (!stock) invalid.quantity = "Use a valid positive quantity and pack size.";
+    if (isPack && (!stock || !contentsUnit.trim()))
+      invalid.quantity = "Add a positive pack size and a unit for its contents.";
     if (date && !validDate(date))
       invalid.date = "Choose a valid expiration date.";
     setErrors(invalid);
@@ -78,8 +87,8 @@ export function AddPantryScreen() {
     try {
       const item = await pantryApi.create({
         name: name.trim(),
-        quantity: Number(quantity),
-        unit: unit.trim(),
+        quantity: stock!.quantity,
+        unit: stock!.unit,
         category: category || categoryFor(name),
         location,
         expirationDate: date || undefined,
@@ -117,10 +126,12 @@ export function AddPantryScreen() {
         autoFocus
         label="Item name"
         placeholder="Whole milk"
-        value={name}
+        // This field has no programmatic replacements. Let UIKit own its text
+        // and selection so predictive typing cannot race a JS value writeback.
+        defaultValue=""
         onChangeText={(value) => {
           setName(value);
-          setErrors((previous) => ({ ...previous, name: "" }));
+          setErrors((previous) => previous.name ? { ...previous, name: "" } : previous);
         }}
         error={errors.name}
         editable={!busy}
@@ -163,6 +174,18 @@ export function AddPantryScreen() {
           />
         </View>
       </View>
+      <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+        {["pcs", "dozen", "pack", "g", "ml"].map((value) => (
+          <Touch key={value} disabled={busy} accessibilityLabel={`Quantity unit: ${value}`} accessibilityState={{ selected: unit === value }} onPress={() => setUnit(value)} style={[s.chip, unit === value && { backgroundColor: "#E1E8CE" }]}>
+            <Text style={s.body}>{value}</Text>
+          </Touch>
+        ))}
+      </View>
+      {isPack && <View style={s.row}>
+        <View style={{ flex: 1 }}><Field label="Amount in each pack" keyboardType="decimal-pad" value={packSize} onChangeText={setPackSize} editable={!busy} /></View>
+        <View style={{ flex: 1 }}><Field label="Contents unit" placeholder="pcs, g, ml" value={contentsUnit} onChangeText={setContentsUnit} editable={!busy} /></View>
+      </View>}
+      {stock && <Text style={s.muted}>Track {stock.quantity} {stock.unit} in your pantry. Use any amount at a time.</Text>}
       <DateField
         value={date}
         onChange={(value) => {

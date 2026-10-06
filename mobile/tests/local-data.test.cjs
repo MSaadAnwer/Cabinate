@@ -25,6 +25,12 @@ const fixture = () => ({
 });
 const parse = (value) => parseLocalData(JSON.stringify(value), categories);
 
+test("category suggestion dismissals survive reload and reject malformed data", () => {
+  const saved = { ...fixture(), pantryCategoryDismissals: { milk: "dismissed suggestion" } };
+  assert.deepEqual(parse(saved), saved);
+  assert.throws(() => parse({ ...fixture(), pantryCategoryDismissals: { milk: false } }));
+});
+
 test("valid existing records round trip without losing user data", () => {
   const saved = fixture();
   assert.deepEqual(parse(saved), saved);

@@ -74,6 +74,50 @@ class BedrockRecipeIdeaProviderTest {
         assertTrue(result.stream().noneMatch(idea -> idea.title().contains("Cheese")));
     }
 
+    @Test void keepsValidRecipesAndReplacesOverStockOrUnknownIngredients() {
+        for (var bad : List.of(RecipeGenerationServiceTest.idea("Too many eggs", "item1", 10),
+                RecipeGenerationServiceTest.idea("Unknown ingredient", "not-in-stock", 1))) {
+            var calls = new java.util.concurrent.atomic.AtomicInteger();
+            var provider = new BedrockRecipeIdeaProvider(mapper, "test-token", "us-east-1", "test", (u, t, b) -> {
+                int attempt = calls.getAndIncrement();
+                var batch = attempt == 0 ? List.of(bad,
+                        RecipeGenerationServiceTest.idea("Poached eggs", "item1", 2),
+                        RecipeGenerationServiceTest.idea("Boiled eggs", "item1", 2))
+                        : List.of(RecipeGenerationServiceTest.idea("Scrambled eggs", "item1", 2));
+                if (attempt == 1) {
+                    var request = mapper.readTree(b);
+                    var prompt = request.path("messages").get(0).path("content").get(0).path("text").asText();
+                    var data = mapper.readTree(prompt.substring(prompt.indexOf('\n') + 1));
+                    assertEquals(1, data.path("recipeCount").asInt());
+                }
+                var response = Map.of("stopReason", "tool_use", "output", Map.of("message", Map.of("content", List.of(
+                        Map.of("toolUse", Map.of("name", "suggest_recipes", "input", Map.of("recipes", batch)))))));
+                return new BedrockRecipeIdeaProvider.Reply(200, mapper.writeValueAsString(response));
+            });
+            var stock = List.of(new RecipeIdeaProvider.Stock("egg", "Eggs", 6, "pcs", ""));
+            var result = provider.generate(stock, List.of());
+            assertEquals(2, calls.get());
+            assertEquals(List.of("Poached eggs", "Boiled eggs", "Scrambled eggs"), result.stream().map(RecipeIdeaProvider.Idea::title).toList());
+            assertEquals(3, RecipeGenerationService.validate(result, stock, List.of()).size());
+        }
+    }
+
+    @Test void replacesDifferentTitlesWithIdenticalInstructions() {
+        var calls = new java.util.concurrent.atomic.AtomicInteger();
+        var first = RecipeGenerationServiceTest.idea("Poached eggs", "item1", 2);
+        var repeated = new RecipeIdeaProvider.Idea("Another dish", first.description(), first.ingredients(), first.steps(), 5, 10, 2);
+        var provider = new BedrockRecipeIdeaProvider(mapper, "test-token", "us-east-1", "test", (u, t, b) -> {
+            var batch = calls.getAndIncrement() == 0
+                    ? List.of(first, repeated, RecipeGenerationServiceTest.idea("Boiled eggs", "item1", 2))
+                    : List.of(RecipeGenerationServiceTest.idea("Scrambled eggs", "item1", 2));
+            var response = Map.of("stopReason", "tool_use", "output", Map.of("message", Map.of("content", List.of(
+                    Map.of("toolUse", Map.of("name", "suggest_recipes", "input", Map.of("recipes", batch)))))));
+            return new BedrockRecipeIdeaProvider.Reply(200, mapper.writeValueAsString(response));
+        });
+        assertEquals(3, provider.generate(List.of(new RecipeIdeaProvider.Stock("egg", "Eggs", 6, "pcs", "")), List.of()).size());
+        assertEquals(2, calls.get());
+    }
+
     @Test void missingConfigurationNeverMakesRequest() {
         var provider = new BedrockRecipeIdeaProvider(mapper, "", "us-east-1", "test", (u, t, b) -> { fail("Network called"); return null; });
         assertEquals(RecipeGenerationException.Reason.UNAVAILABLE,

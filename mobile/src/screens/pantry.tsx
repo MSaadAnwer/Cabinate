@@ -7,6 +7,9 @@ import { useRef, useState } from "react";
 import { RefreshControl, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { FoodShape, Icon } from "../components/art";
+import { PantryQuantity } from "../components/pantry-quantity";
+import { AnimatedQuantity } from "../components/animated-quantity";
+import { PantryCategorySuggestion } from "../components/pantry-category-suggestion";
 import {
   collectionLayout,
   useContentLayout,
@@ -45,7 +48,6 @@ export default function PantryScreen() {
           <RefreshControl refreshing={loading && loaded} onRefresh={reload} />
         }
       >
-        <Text style={s.title}>Pantry</Text>
         <DataNotice
           variant="pantry"
           subject="your pantry"
@@ -82,9 +84,9 @@ export default function PantryScreen() {
                     singleColumn && { width: "100%" },
                   ]}
                 >
-                  <FoodShape category={category} />
+                  <FoodShape category={category} width={42} height={48} />
                   <Text
-                    style={[s.heading, { fontSize: 19, textAlign: "center" }]}
+                    style={[s.heading, { fontSize: 17, textAlign: "center" }]}
                   >
                     {category}
                   </Text>
@@ -144,6 +146,8 @@ export function InventoryScreen() {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [confirmVersion, setConfirmVersion] = useState(0);
   const [deleting, setDeleting] = useState(false);
+  const [adjustment, setAdjustment] = useState<{ id: string; mode: "use" | "add" } | null>(null);
+  const [adjusting, setAdjusting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const removing = useRef(false);
   const { notify } = useFeedback();
@@ -202,45 +206,76 @@ export function InventoryScreen() {
       {!items.length && loaded && !!search && (
         <Text style={s.muted}>No pantry items match “{search}”.</Text>
       )}
+      <View style={{ gap: 10 }}>
       {items.map((item) => (
-        <View key={item.id} style={s.card}>
-          <View style={s.row}>
+        <View key={item.id} style={[s.card, { padding: 12, borderRadius: 16 }]}>
+          <View style={[s.row, { alignItems: "flex-start" }]}>
             <View style={{ flex: 1, gap: 4 }}>
               <Text selectable style={[s.heading, { fontSize: 21 }]}>
                 {item.name}
               </Text>
-              <Text style={s.body}>
-                {item.quantity} {item.unit}
+              <AnimatedQuantity quantity={item.quantity} unit={item.unit} />
+              <Text style={s.muted}>
+                {categoryFor(item.name, item.category, item.location)}
+                {item.location ? ` · ${item.location.toLowerCase()}` : ""}
+              </Text>
+              <Text style={[
+                s.muted,
+                item.expirationDate && daysUntil(item.expirationDate) <= 7
+                  ? { color: "#AD5543" }
+                  : {},
+              ]}>
+                {expiryLabel(item.expirationDate)}
               </Text>
             </View>
+            <View style={{ gap: 6 }}>
             <IconButton
               name="trash"
               destructive
-              disabled={deleting}
+              disabled={deleting || adjusting}
               label={`Delete ${item.name}`}
               onPress={() => {
-                if (!deleting) {
+                if (!deleting && !adjusting) {
+                  setAdjustment(null);
                   setConfirmId(item.id);
                   setConfirmVersion(item.version);
                   setDeleteError("");
                 }
               }}
             />
+            <IconButton
+              name="plus"
+              label={`Add more ${item.name}`}
+              disabled={deleting || adjusting}
+              onPress={() => {
+                setConfirmId(null);
+                setAdjustment({ id: item.id, mode: "add" });
+              }}
+            />
+            <IconButton
+              name="minus"
+              label={`Use some ${item.name}`}
+              disabled={deleting || adjusting}
+              onPress={() => {
+                setConfirmId(null);
+                setAdjustment({ id: item.id, mode: "use" });
+              }}
+            />
+            </View>
           </View>
-          <Text style={s.muted}>
-            {categoryFor(item.name, item.category, item.location)}
-            {item.location ? ` · ${item.location.toLowerCase()}` : ""}
-          </Text>
-          <Text
-            style={[
-              s.muted,
-              item.expirationDate && daysUntil(item.expirationDate) <= 7
-                ? { color: "#AD5543" }
-                : {},
-            ]}
-          >
-            {expiryLabel(item.expirationDate)}
-          </Text>
+          {confirmId !== item.id && adjustment?.id !== item.id && <PantryCategorySuggestion
+            item={item}
+            disabled={deleting || adjusting}
+            onBusyChange={setAdjusting}
+          />}
+          {confirmId !== item.id && <PantryQuantity
+            item={item}
+            mode={adjustment?.id === item.id ? adjustment.mode : null}
+            onModeChange={(mode) => {
+              if (!mode || (!adjusting && !deleting)) setAdjustment(mode ? { id: item.id, mode } : null);
+            }}
+            onBusyChange={setAdjusting}
+          />}
           {confirmId === item.id && (
             <View style={{ gap: 10 }}>
               <Text style={s.body}>
@@ -267,6 +302,7 @@ export function InventoryScreen() {
           )}
         </View>
       ))}
+      </View>
       <Pressable
         accessibilityRole="button"
         onPress={() =>

@@ -26,6 +26,7 @@ import {
   type ScrollViewProps,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView as NativeSafeAreaView } from "react-native-screens/experimental";
 import { useHeaderHeight } from "expo-router/react-navigation";
 import { Icon, TomatoMark, type IconName } from "./art";
 import { colors, motion, radius, spacing } from "./tokens";
@@ -216,12 +217,14 @@ export function IconButton({
   onPress,
   disabled,
   destructive,
+  size = 23,
 }: {
   name: IconName;
   label: string;
   onPress: () => void;
   disabled?: boolean;
   destructive?: boolean;
+  size?: number;
 }) {
   return (
     <Touch
@@ -237,7 +240,7 @@ export function IconButton({
         alignItems: "center",
       }}
     >
-      <Icon name={name} color={destructive ? colors.red : colors.ink} />
+      <Icon name={name} size={size} color={destructive ? colors.red : colors.ink} />
     </Touch>
   );
 }
@@ -531,8 +534,8 @@ export function LoadingRows({
               >
                 <View
                   style={{
-                    width: 128,
-                    height: 156,
+                    width: 42,
+                    height: 48,
                     borderRadius: 24,
                     backgroundColor: colors.selected,
                   }}
@@ -775,6 +778,7 @@ export function FloatingAdd({
 }: {
   actions: { title: string; icon: IconName; onPress: () => void }[];
 }) {
+  const { gutter } = useContentLayout();
   const [open, setOpen] = useState(false);
   const [visible, setVisible] = useState(false);
   const [anchor, setAnchor] = useState({ left: 24, top: 100 });
@@ -824,10 +828,12 @@ export function FloatingAdd({
   };
   return (
     <>
-      <View
+      <NativeSafeAreaView
         pointerEvents="box-none"
-        style={{ position: "absolute", bottom: 18, left: 24 }}
+        edges={Platform.OS === "ios" ? { bottom: true, left: true, right: true } : {}}
+        style={[StyleSheet.absoluteFill, { justifyContent: "flex-end" }]}
       >
+        <View pointerEvents="box-none" style={{ paddingBottom: 18, paddingHorizontal: gutter }}>
         <Touch
           ref={trigger}
           accessibilityLabel="Open add menu"
@@ -836,6 +842,7 @@ export function FloatingAdd({
           style={{
             width: 58,
             height: 58,
+            alignSelf: "flex-start",
             borderRadius: 29,
             backgroundColor: colors.ink,
             alignItems: "center",
@@ -845,7 +852,8 @@ export function FloatingAdd({
         >
           <Icon name="plus" color={colors.cream} size={28} />
         </Touch>
-      </View>
+        </View>
+      </NativeSafeAreaView>
       <Modal
         visible={visible}
         transparent

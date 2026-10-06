@@ -31,6 +31,9 @@ public class BedrockRecipeIdeaProvider implements RecipeIdeaProvider {
             3. quantity is the amount used in the supplied inventory unit, not the whole stock.
                For example a small drizzle of oil uses about 0.02 bottle, NEVER 1 bottle.
                For packaged foods explain kitchen amounts in steps; use small sensible fractions.
+               Convert kitchen measures to inventory units: 1 cup from a gallon is 0.0625 gallon,
+               100 g from kg stock is 0.1 kg, and 2 eggs from dozen stock is about 0.1667 dozen.
+               Never request more stock than supplied. Use fewer servings if necessary.
             4. Make practical dishes with complete preparation and cooking directions. Match the
                title to the dish. Include hydration for grains, chopping for fruit, and heat/time.
             5. Excluded titles are dishes already shown. Create different dishes and cooking methods.
@@ -75,6 +78,15 @@ public class BedrockRecipeIdeaProvider implements RecipeIdeaProvider {
                 excluded.add(idea.title().strip());
                 if (usesMissingStaples(idea, pantry)) {
                     log.info("Discarding recipe that introduces an unavailable staple");
+                    continue;
+                }
+                var candidate = new ArrayList<>(collected);
+                candidate.add(idea);
+                try {
+                    RecipeGenerationService.validate(candidate, pantry, excludeTitles, candidate.size());
+                } catch (RecipeGenerationException invalid) {
+                    if (invalid.reason() != RecipeGenerationException.Reason.INVALID_RESPONSE) throw invalid;
+                    log.info("Discarding invalid recipe suggestion and requesting a replacement");
                     continue;
                 }
                 collected.add(idea);

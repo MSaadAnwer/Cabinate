@@ -4,6 +4,7 @@ const {
   parseRecipe,
   inPantry,
   categoryFor,
+  suggestedPantryCategory,
   validDate,
   localDate,
   daysUntil,
@@ -45,6 +46,15 @@ test("explicit and freezer categories override ingredient guessing", () => {
   assert.equal(categoryFor("Spinach", "PRODUCE", "FREEZER"), "Frozen");
   assert.equal(categoryFor("Sourdough bread"), "Bread & grains");
   assert.equal(categoryFor("My item", "Cupboard"), "Cupboard");
+});
+
+test("pantry suggestions catch misplaced foods while respecting freezer storage and specific products", () => {
+  assert.equal(suggestedPantryCategory({ name: "Milk", category: "Produce" }), "Dairy");
+  assert.equal(suggestedPantryCategory({ name: "Apples", category: "DAIRY" }), "Produce");
+  assert.equal(suggestedPantryCategory({ name: "Milk", category: "DAIRY" }), null);
+  assert.equal(suggestedPantryCategory({ name: "Mystery food", category: "Produce" }), null);
+  assert.equal(suggestedPantryCategory({ name: "Milk", category: "Produce", location: "FREEZER" }), null);
+  assert.equal(suggestedPantryCategory({ name: "Coconut milk", category: "Dairy" }), "Cupboard");
 });
 test("calendar dates reject overflow and preserve local day calculations", () => {
   assert.equal(validDate("2026-02-29"), false);

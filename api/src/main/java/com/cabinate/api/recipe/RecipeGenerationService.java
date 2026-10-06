@@ -46,8 +46,13 @@ public class RecipeGenerationService {
 
     static List<GeneratedRecipeResponse> validate(List<RecipeIdeaProvider.Idea> ideas,
             List<RecipeIdeaProvider.Stock> pantry, List<String> excludeTitles) {
-        if (ideas == null || ideas.size() < 3) {
-            log.warn("Recipe validation failed: expected three suggestions, received {}", ideas == null ? 0 : ideas.size());
+        return validate(ideas, pantry, excludeTitles, 3);
+    }
+
+    static List<GeneratedRecipeResponse> validate(List<RecipeIdeaProvider.Idea> ideas,
+            List<RecipeIdeaProvider.Stock> pantry, List<String> excludeTitles, int count) {
+        if (ideas == null || ideas.size() < count) {
+            log.warn("Recipe validation failed: expected {} suggestions, received {}", count, ideas == null ? 0 : ideas.size());
             throw invalid();
         }
         Map<String, RecipeIdeaProvider.Stock> stock = new HashMap<>();
@@ -56,7 +61,7 @@ public class RecipeGenerationService {
         excludeTitles.forEach(title -> titles.add(normalize(title)));
         Set<String> instructions = new HashSet<>();
         List<GeneratedRecipeResponse> result = new ArrayList<>();
-        for (var idea : ideas.subList(0, 3)) {
+        for (var idea : ideas.subList(0, count)) {
             if (idea == null || !text(idea.title(), 120) || !text(idea.description(), 1000)
                     || !titles.add(normalize(idea.title())) || idea.servings() < 1 || idea.servings() > 20
                     || idea.prepTimeMinutes() < 0 || idea.prepTimeMinutes() > 1440
@@ -96,6 +101,6 @@ public class RecipeGenerationService {
     private static boolean text(String value, int max) { return value != null && !value.isBlank() && value.length() <= max; }
     static RecipeGenerationException invalid() {
         return new RecipeGenerationException(INVALID_RESPONSE,
-                "Could not create three fresh recipes from your pantry. Try again or add more ingredients for variety.");
+                "The recipe service returned incomplete or invalid ideas. Please try again.");
     }
 }

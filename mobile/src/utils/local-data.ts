@@ -29,6 +29,7 @@ export interface LocalData {
   receipts: Receipt[];
   steps: Record<string, number[]>;
   categoryCorrections?: Record<string, Category>;
+  pantryCategoryDismissals?: Record<string, string>;
   timers?: CookingTimer[];
 }
 
@@ -99,6 +100,9 @@ export function parseLocalData(
         !Object.values(value.categoryCorrections).every(
           (category) => text(category) && categories.includes(category),
         ))) ||
+    (value.pantryCategoryDismissals !== undefined &&
+      (!record(value.pantryCategoryDismissals) ||
+        !Object.values(value.pantryCategoryDismissals).every(text))) ||
     (value.timers !== undefined &&
       (!Array.isArray(value.timers) ||
         !unique(

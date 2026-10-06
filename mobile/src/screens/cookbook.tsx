@@ -1,5 +1,7 @@
 import { useFormDraft } from "../components/form-draft";
 import { StepTimers } from "../components/cooking-timers";
+import { RecipeGenerator } from "../components/recipe-generator";
+import { recipeApi } from "../services/api";
 import { Touch as Pressable, useFeedback } from "../components/feedback";
 import { useRef, useState } from "react";
 import { RefreshControl, Switch, Text, View } from "react-native";
@@ -50,15 +52,22 @@ export default function CookbookScreen() {
           <RefreshControl refreshing={loading && loaded} onRefresh={reload} />
         }
       >
-        <View style={s.row}>
-          <Text style={[s.title, { flex: 1 }]}>Cookbook</Text>
+        <View style={[s.row, { alignItems: "flex-end" }]}>
+          <View style={{ flex: 1 }}>
+            <SearchField
+              label="Find a recipe"
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search recipes"
+            />
+          </View>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Pantry recipe matches"
+            accessibilityLabel="Inspiration"
             onPress={() => router.push("/inspiration")}
             style={{
               width: 48,
-              height: 48,
+              height: 50,
               flexShrink: 0,
               alignItems: "center",
               justifyContent: "center",
@@ -69,12 +78,6 @@ export default function CookbookScreen() {
             <Icon name="sparkles" />
           </Pressable>
         </View>
-        <SearchField
-          label="Find a recipe"
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Search recipes"
-        />
         <DataNotice
           variant="recipes"
           subject="your cookbook"
@@ -542,7 +545,7 @@ export function ImportListScreen() {
   );
 }
 export function InspirationScreen() {
-  const { pantry, recipes, loaded, loading, error, reload } = useKitchen();
+  const { pantry, recipes, loaded, loading, error, reload, upsertRecipe } = useKitchen();
   const matches = recipes
     .map((recipe) => ({
       recipe,
@@ -554,8 +557,22 @@ export function InspirationScreen() {
     .sort((a, b) => b.count - a.count);
   return (
     <Page>
-      <Icon name="sparkles" size={38} />
-      <Text style={s.title}>Pantry matches</Text>
+      <RecipeGenerator
+        variant="inspiration"
+        disabled={loading || !loaded || !!error}
+        hasDraft={false}
+        onChoose={async (recipe) => {
+          const saved = await recipeApi.create({
+            title: recipe.title,
+            description: recipe.description,
+            servings: recipe.servings,
+            prepTimeMinutes: recipe.prepTimeMinutes,
+            cookTimeMinutes: recipe.cookTimeMinutes,
+            rawText: `Ingredients:\n${recipe.ingredients.map(line => `- ${line}`).join("\n")}\n\nInstructions:\n${recipe.steps.map((line, index) => `${index + 1}. ${line}`).join("\n")}`,
+          });
+          upsertRecipe(saved);
+        }}
+      />
       <View style={s.card}>
         <Text style={s.body}>
           Saved recipes that use ingredients in your pantry.

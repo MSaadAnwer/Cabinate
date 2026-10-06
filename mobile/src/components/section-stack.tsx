@@ -20,7 +20,7 @@ export function SectionStack({
         headerTintColor: colors.ink,
         headerShadowVisible: false,
         headerBackButtonDisplayMode: "minimal",
-        headerTitleStyle: { fontFamily: "Georgia" },
+        headerTitleStyle: { fontFamily: "Georgia", fontSize: 26 },
         animation: reduceMotion ? "none" : "default",
       }}
     >
@@ -38,6 +38,7 @@ export function SectionStack({
           headerRight: () => (
             <IconButton
               name="calendar"
+              size={27}
               label="Meal calendar"
               onPress={() => router.push("/calendar")}
             />
