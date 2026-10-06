@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import lombok.extern.slf4j.Slf4j;
 import tools.jackson.databind.json.JsonMapper;
+import com.cabinate.api.common.http.ExternalHttpClient;
 import static com.cabinate.api.recipe.RecipeGenerationException.Reason.UNAVAILABLE;
 
 @Component
@@ -46,10 +47,11 @@ public class BedrockRecipeIdeaProvider implements RecipeIdeaProvider {
 
     @Autowired
     public BedrockRecipeIdeaProvider(JsonMapper mapper,
+            ExternalHttpClient client,
             @Value("${cabinate.recipes.bedrock-token:}") String token,
             @Value("${cabinate.recipes.region:us-east-1}") String region,
             @Value("${cabinate.recipes.model:amazon.nova-micro-v1:0}") String model) {
-        this(mapper, token, region, model, BedrockRecipeIdeaProvider::send);
+        this(mapper, token, region, model, (uri, bearer, body) -> send(client, uri, bearer, body));
     }
 
     BedrockRecipeIdeaProvider(JsonMapper mapper, String token, String region, String model, Transport transport) {
@@ -157,14 +159,12 @@ public class BedrockRecipeIdeaProvider implements RecipeIdeaProvider {
         }
     }
 
-    private static Reply send(URI uri, String token, String body) throws Exception {
-        try (var client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(8)).build()) {
-            var request = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(10))
-                    .header("Authorization", "Bearer " + token).header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(body)).build();
-            var response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            return new Reply(response.statusCode(), response.body());
-        }
+    private static Reply send(ExternalHttpClient client, URI uri, String token, String body) throws Exception {
+        var request = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(10))
+                .header("Authorization", "Bearer " + token).header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body)).build();
+        var response = client.send(request, 1_000_000);
+        return new Reply(response.statusCode(), new String(response.body(), StandardCharsets.UTF_8));
     }
 
     private static Map<String, Object> schema(int count, List<Stock> pantry) {

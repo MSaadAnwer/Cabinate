@@ -33,9 +33,9 @@ class DatabaseSeederTest {
 
     @Test
     void seedIfEmpty_WhenDatabaseEmpty_ShouldPopulateAllCollections() {
-        when(recipeRepository.count()).thenReturn(0L);
-        when(pantryItemRepository.count()).thenReturn(0L);
-        when(rawIngestPayloadRepository.count()).thenReturn(0L);
+        when(recipeRepository.countByOwnerId("local-demo")).thenReturn(0L);
+        when(pantryItemRepository.countByOwnerId("local-demo")).thenReturn(0L);
+        when(rawIngestPayloadRepository.countByOwnerId("local-demo")).thenReturn(0L);
 
         Map<String, Integer> result = databaseSeeder.seedIfEmpty();
 
@@ -50,9 +50,9 @@ class DatabaseSeederTest {
 
     @Test
     void seedIfEmpty_WhenDatabaseAlreadyPopulated_ShouldSkipAll() {
-        when(recipeRepository.count()).thenReturn(5L);
-        when(pantryItemRepository.count()).thenReturn(10L);
-        when(rawIngestPayloadRepository.count()).thenReturn(3L);
+        when(recipeRepository.countByOwnerId("local-demo")).thenReturn(5L);
+        when(pantryItemRepository.countByOwnerId("local-demo")).thenReturn(10L);
+        when(rawIngestPayloadRepository.countByOwnerId("local-demo")).thenReturn(3L);
 
         Map<String, Integer> result = databaseSeeder.seedIfEmpty();
 
@@ -73,9 +73,9 @@ class DatabaseSeederTest {
         assertThat(result.get("pantryItemsSeeded")).isEqualTo(10);
         assertThat(result.get("ingestPayloadsSeeded")).isEqualTo(3);
 
-        verify(recipeRepository).deleteAll();
-        verify(pantryItemRepository).deleteAll();
-        verify(rawIngestPayloadRepository).deleteAll();
+        verify(recipeRepository).deleteByOwnerId("local-demo");
+        verify(pantryItemRepository).deleteByOwnerId("local-demo");
+        verify(rawIngestPayloadRepository).deleteByOwnerId("local-demo");
 
         verify(recipeRepository).saveAll(anyList());
         verify(pantryItemRepository).saveAll(anyList());

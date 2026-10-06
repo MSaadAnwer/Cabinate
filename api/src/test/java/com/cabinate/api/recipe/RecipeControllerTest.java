@@ -107,12 +107,13 @@ class RecipeControllerTest {
                 0,
                 1,
                 Instant.now(),
-                Instant.now());
+                Instant.now(), 0L);
 
         when(recipeService.createRecipe(any(CreateRecipeRequest.class))).thenReturn(response);
 
         String jsonPayload = """
                 {
+                    "version": 0,
                     "title": "Berry Smoothie",
                     "description": "Healthy protein smoothie",
                     "sourceUrl": "https://example.com/smoothie",
@@ -136,6 +137,7 @@ class RecipeControllerTest {
     void createRecipe_WhenInvalid_ShouldReturn400BadRequest() throws Exception {
         String invalidPayload = """
                 {
+                    "version": 0,
                     "title": "",
                     "rawText": "",
                     "prepTimeMinutes": -1,
@@ -156,7 +158,7 @@ class RecipeControllerTest {
     @Test
     void getAllRecipes_ShouldReturnList() throws Exception {
         RecipeResponse item = new RecipeResponse(
-                "rec-1", "Pancakes", null, null, "Make batter and cook.", 10, 15, 4, Instant.now(), Instant.now());
+                "rec-1", "Pancakes", null, null, "Make batter and cook.", 10, 15, 4, Instant.now(), Instant.now(), 0L);
         when(recipeService.getAllRecipes(null)).thenReturn(List.of(item));
 
         mockMvc.perform(get("/api/v1/recipes"))
@@ -168,7 +170,7 @@ class RecipeControllerTest {
     @Test
     void getRecipeById_WhenFound_ShouldReturn200() throws Exception {
         RecipeResponse item = new RecipeResponse(
-                "rec-1", "Pancakes", null, null, "Make batter and cook.", 10, 15, 4, Instant.now(), Instant.now());
+                "rec-1", "Pancakes", null, null, "Make batter and cook.", 10, 15, 4, Instant.now(), Instant.now(), 0L);
         when(recipeService.getRecipeById("rec-1")).thenReturn(item);
 
         mockMvc.perform(get("/api/v1/recipes/rec-1"))
@@ -190,12 +192,13 @@ class RecipeControllerTest {
     @Test
     void updateRecipe_WhenValid_ShouldReturn200() throws Exception {
         RecipeResponse response = new RecipeResponse(
-                "rec-1", "Fluffy Pancakes", "Updated", null, "Updated raw text", 12, 18, 4, Instant.now(), Instant.now());
+                "rec-1", "Fluffy Pancakes", "Updated", null, "Updated raw text", 12, 18, 4, Instant.now(), Instant.now(), 0L);
 
         when(recipeService.updateRecipe(eq("rec-1"), any(UpdateRecipeRequest.class))).thenReturn(response);
 
         String updatePayload = """
                 {
+                    "version": 0,
                     "title": "Fluffy Pancakes",
                     "description": "Updated",
                     "rawText": "Updated raw text",
@@ -215,18 +218,18 @@ class RecipeControllerTest {
 
     @Test
     void deleteRecipe_WhenFound_ShouldReturn204NoContent() throws Exception {
-        doNothing().when(recipeService).deleteRecipe("rec-1");
+        doNothing().when(recipeService).deleteRecipe("rec-1", 0L);
 
-        mockMvc.perform(delete("/api/v1/recipes/rec-1"))
+        mockMvc.perform(delete("/api/v1/recipes/rec-1").header("If-Match", "\"0\""))
                 .andExpect(status().isNoContent());
     }
 
     @Test
     void deleteRecipe_WhenNotFound_ShouldReturn404() throws Exception {
         doThrow(new ResourceNotFoundException("Recipe", "id", "rec-missing"))
-                .when(recipeService).deleteRecipe("rec-missing");
+                .when(recipeService).deleteRecipe("rec-missing", 0L);
 
-        mockMvc.perform(delete("/api/v1/recipes/rec-missing"))
+        mockMvc.perform(delete("/api/v1/recipes/rec-missing").header("If-Match", "\"0\""))
                 .andExpect(status().isNotFound());
     }
 }

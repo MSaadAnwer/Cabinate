@@ -2,6 +2,7 @@ package com.cabinate.api.pantry.dto;
 
 import java.time.LocalDate;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
@@ -17,5 +18,6 @@ public record UpdatePantryItemRequest(
 
         String location,
 
-        LocalDate expirationDate) {
+        LocalDate expirationDate,
+        @NotNull(message = "The record version is required") @Min(0) Long version) {
 }

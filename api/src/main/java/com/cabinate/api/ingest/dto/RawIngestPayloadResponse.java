@@ -13,7 +13,8 @@ public record RawIngestPayloadResponse(
         Map<String, Object> metadata,
         String status,
         Instant createdAt,
-        Instant updatedAt) {
+        Instant updatedAt,
+        Long version) {
 
     public static RawIngestPayloadResponse fromEntity(RawIngestPayload entity) {
         if (entity == null) {
@@ -28,6 +29,7 @@ public record RawIngestPayloadResponse(
                 entity.getMetadata(),
                 entity.getStatus(),
                 entity.getCreatedAt(),
-                entity.getUpdatedAt());
+                entity.getUpdatedAt(),
+                entity.getVersion());
     }
 }

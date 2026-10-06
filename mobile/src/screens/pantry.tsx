@@ -142,6 +142,7 @@ export function InventoryScreen() {
     deletePantryItem,
   } = useKitchen();
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [confirmVersion, setConfirmVersion] = useState(0);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const removing = useRef(false);
@@ -153,7 +154,7 @@ export function InventoryScreen() {
     setDeleting(true);
     setDeleteError("");
     try {
-      await deletePantryItem(id, prepareRemoval);
+      await deletePantryItem(id, confirmVersion, prepareRemoval);
       setConfirmId(null);
       notify("Item removed from your pantry");
     } catch (error) {
@@ -220,6 +221,7 @@ export function InventoryScreen() {
               onPress={() => {
                 if (!deleting) {
                   setConfirmId(item.id);
+                  setConfirmVersion(item.version);
                   setDeleteError("");
                 }
               }}

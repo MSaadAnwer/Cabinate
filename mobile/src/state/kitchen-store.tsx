@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { pantryApi, recipeApi } from "../services/api";
+import { pantryApi, recipeApi, apiConfig } from "../services/api";
 import type { PantryItem } from "../types/pantry";
 import type { Recipe } from "../types/recipe";
 import { categories } from "../utils/kitchen";
@@ -26,9 +26,10 @@ export type {
 } from "../utils/local-data";
 
 const empty: LocalData = { lists: [], meals: [], receipts: [], steps: {} };
-const key = "cabinate:kitchen:v1";
+const legacyKey = "cabinate:kitchen:v1";
 
-function useStore() {
+function useStore(accountId: string, development: boolean) {
+  const key = development ? legacyKey : `${legacyKey}:account:${encodeURIComponent(apiConfig.baseUrl)}:${encodeURIComponent(accountId)}`;
   const [pantryState, setPantryState] = useState(initialCollection<PantryItem>);
   const [recipeState, setRecipeState] = useState(initialCollection<Recipe>);
   const [pantryCollection] = useState(() =>
@@ -51,9 +52,9 @@ function useStore() {
       setStorageError,
     );
   const deletePantryItem = useCallback(
-    async (id: string, beforeRemove?: () => void) => {
+    async (id: string, version: number, beforeRemove?: () => void) => {
       try {
-        await pantryApi.delete(id);
+        await pantryApi.delete(id, version);
       } catch (error) {
         if ((error as { status?: number }).status !== 404) throw error;
       }
@@ -143,8 +144,8 @@ function useStore() {
 export const KitchenContext = createContext<ReturnType<typeof useStore> | null>(
   null,
 );
-export function KitchenProvider({ children }: { children: ReactNode }) {
-  return <KitchenContext value={useStore()}>{children}</KitchenContext>;
+export function KitchenProvider({ children, accountId, development }: { children: ReactNode; accountId: string; development: boolean }) {
+  return <KitchenContext value={useStore(accountId, development)}>{children}</KitchenContext>;
 }
 export function useKitchen() {
   const store = use(KitchenContext);

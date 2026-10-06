@@ -3,9 +3,14 @@ package com.cabinate.api.pantry;
 import java.time.LocalDate;
 import java.util.List;
 import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.RequestHeader;
+import com.cabinate.api.common.persistence.WriteVersion;
+import com.cabinate.api.common.pagination.PageQuery;
+import com.cabinate.api.common.pagination.PageResponse;
+import org.springframework.data.domain.Sort;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,7 +26,6 @@ import com.cabinate.api.pantry.dto.PantryItemResponse;
 import com.cabinate.api.pantry.dto.UpdatePantryItemRequest;
 import lombok.RequiredArgsConstructor;
 
-@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/v1/pantry")
 @RequiredArgsConstructor
@@ -54,6 +58,12 @@ public class PantryItemController {
         return pantryItemService.getItemById(id);
     }
 
+    @GetMapping("/page")
+    public PageResponse<PantryItemResponse> getItemPage(@RequestParam(required = false) String category,
+            @RequestParam(required = false) String search, @Valid @ModelAttribute PageQuery query) {
+        return pantryItemService.getItemPage(category, search, query.sortedBy(Sort.by("name")));
+    }
+
     @PutMapping("/{id}")
     public PantryItemResponse updateItem(
             @PathVariable String id,
@@ -63,7 +73,7 @@ public class PantryItemController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteItem(@PathVariable String id) {
-        pantryItemService.deleteItem(id);
+    public void deleteItem(@PathVariable String id, @RequestHeader(value = "If-Match", required = false) String version) {
+        pantryItemService.deleteItem(id, WriteVersion.parse(version));
     }
 }

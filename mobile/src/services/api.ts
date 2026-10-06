@@ -1,4 +1,4 @@
-import { requestJson } from "./http";
+import { authenticatedJson } from "../../../shared/authenticated-http.ts";
 import type { SeedResponse } from "../types/common";
 import type { IngestPayloadRequest, RawIngestPayload } from "../types/ingest";
 import type {
@@ -16,13 +16,13 @@ import type {
 const DEFAULT_API_URL = "http://localhost:8080/api/v1";
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? DEFAULT_API_URL;
 
-function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  return requestJson<T>(`${BASE_URL}${endpoint}`, options);
+function request<T>(endpoint: string, options: RequestInit = {}, timeoutMs = 15000): Promise<T> {
+  return authenticatedJson<T>(`${BASE_URL}${endpoint}`, options, timeoutMs);
 }
 
 export const pantryApi = {
-  delete: (id: string): Promise<void> =>
-    request<void>(`/pantry/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  delete: (id: string, version: number): Promise<void> =>
+    request<void>(`/pantry/${encodeURIComponent(id)}`, { method: "DELETE", headers: { "If-Match": `"${version}"` } }),
   getAll: (category?: string, search?: string): Promise<PantryItem[]> => {
     const params = new URLSearchParams();
     if (category) params.append("category", category);
@@ -53,7 +53,7 @@ export const pantryApi = {
 
 export const recipeApi = {
   generate: (excludeTitles: string[], signal?: AbortSignal): Promise<GeneratedRecipe[]> =>
-    requestJson<GeneratedRecipe[]>(`${BASE_URL}/recipes/generate`, {
+    request<GeneratedRecipe[]>(`/recipes/generate`, {
       method: "POST",
       body: JSON.stringify({ excludeTitles }),
       signal,

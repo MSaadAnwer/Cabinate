@@ -1,0 +1,6 @@
+# Authenticated local development for the Cabinate iOS app.
+# This profile keeps authentication enabled; the dev profile bypasses it.
+cabinate:
+  auth:
+    issuer: https://cabinate.us.auth0.com/
+    audience: https://cabinate-api

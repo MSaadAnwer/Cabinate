@@ -1,0 +1,5 @@
+# Opt in only for local development: demo data and the destructive reset endpoint.
+cabinate:
+  seed:
+    enabled: ${CABINATE_SEED_ENABLED:true}
+    api-enabled: ${CABINATE_SEED_API_ENABLED:true}

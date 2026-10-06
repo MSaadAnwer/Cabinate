@@ -10,6 +10,8 @@ import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilderFactory;
 import org.w3c.dom.Element;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.cabinate.api.common.http.ExternalHttpClient;
 
 /** Public notices, not enforcement data or a determination that a pantry item is affected. */
 @Service
@@ -23,7 +25,8 @@ public class RecallService {
     private final Clock clock;
     private Feed cached = new Feed(List.of(), null, null, true);
 
-    public RecallService() { this(RecallService::download, Clock.systemUTC()); }
+    @Autowired
+    public RecallService(ExternalHttpClient client) { this(() -> download(client), Clock.systemUTC()); }
     RecallService(Fetcher fetcher, Clock clock) { this.fetcher = fetcher; this.clock = clock; }
 
     // Demand-driven cache: at most one upstream request per 15 minutes across clients.
@@ -40,16 +43,12 @@ public class RecallService {
         return cached;
     }
 
-    private static byte[] download() throws Exception {
-        try (var client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build()) {
-            var request = HttpRequest.newBuilder(FEED).timeout(Duration.ofSeconds(12))
+    private static byte[] download(ExternalHttpClient client) throws Exception {
+        var request = HttpRequest.newBuilder(FEED).timeout(Duration.ofSeconds(12))
                 .header("Accept", "application/rss+xml, application/xml").GET().build();
-            var response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
-                if (response.statusCode() != 200) throw new IllegalStateException("Recall source HTTP " + response.statusCode());
-                byte[] bytes = response.body();
-                if (bytes.length > 2_000_000) throw new IllegalStateException("Recall feed too large");
-                return bytes;
-        }
+        var response = client.send(request, 2_000_000);
+        if (response.statusCode() != 200) throw new IllegalStateException("Recall source HTTP " + response.statusCode());
+        return response.body();
     }
 
     static List<Notice> parse(byte[] xml) throws Exception {

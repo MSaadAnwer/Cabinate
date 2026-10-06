@@ -10,6 +10,7 @@ import com.cabinate.api.pantry.PantryItemRepository;
 import com.cabinate.api.recipe.dto.GeneratedRecipeResponse;
 import static com.cabinate.api.recipe.RecipeGenerationException.Reason.*;
 import lombok.RequiredArgsConstructor;
+import com.cabinate.api.common.security.AccountContext;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -18,13 +19,14 @@ import lombok.extern.slf4j.Slf4j;
 public class RecipeGenerationService {
     private final PantryItemRepository pantryRepository;
     private final RecipeIdeaProvider provider;
+    private final AccountContext account;
     private final Semaphore slots = new Semaphore(2);
 
     public List<GeneratedRecipeResponse> generate(List<String> excludeTitles) {
         if (!slots.tryAcquire()) throw new RecipeGenerationException(BUSY,
                 "Recipe generation is busy. Please try again in a moment.");
         try {
-            var pantry = pantryRepository.findAll().stream()
+            var pantry = pantryRepository.findByOwnerId(account.id()).stream()
                     .filter(item -> item.getId() != null && item.getName() != null && !item.getName().isBlank())
                     .filter(item -> item.getQuantity() != null && Double.isFinite(item.getQuantity()) && item.getQuantity() > 0)
                     .filter(item -> item.getExpirationDate() == null || !item.getExpirationDate().isBefore(LocalDate.now()))

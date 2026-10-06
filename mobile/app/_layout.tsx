@@ -7,15 +7,24 @@ import { colors, IconButton } from "../src/components/ui";
 import { TomatoMark } from "../src/components/art";
 import { CookingTimerProvider } from "../src/state/cooking-timers";
 import { TimerTray } from "../src/components/cooking-timers";
+import { AuthProvider, useAuth } from "../src/state/auth";
 
 export default function Layout() {
   return (
-    <KitchenProvider>
-      <FeedbackProvider>
+    <FeedbackProvider>
+      <AuthProvider>
+        <AccountKitchen />
+      </AuthProvider>
+    </FeedbackProvider>
+  );
+}
+function AccountKitchen() {
+  const { identity } = useAuth();
+  return (
+    <KitchenProvider key={identity.accountId} accountId={identity.accountId} development={identity.development}>
         <CookingTimerProvider>
           <Navigator />
         </CookingTimerProvider>
-      </FeedbackProvider>
     </KitchenProvider>
   );
 }

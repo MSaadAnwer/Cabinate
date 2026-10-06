@@ -77,6 +77,7 @@ export const PantryDashboard: React.FC<PantryDashboardProps> = ({
     const target = items.find((i) => i.id === id);
     if (!target) return;
     await onUpdateItem(id, {
+      version: target.version,
       name: target.name,
       quantity: newQuantity,
       unit: target.unit,

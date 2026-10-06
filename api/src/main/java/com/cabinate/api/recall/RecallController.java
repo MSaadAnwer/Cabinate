@@ -2,7 +2,6 @@ package com.cabinate.api.recall;
 
 import org.springframework.web.bind.annotation.*;
 
-@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/v1/recalls")
 public class RecallController {

@@ -4,6 +4,8 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import org.springframework.context.annotation.Profile;
+import com.cabinate.api.common.security.AccountContext;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -17,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
+@Profile("dev")
 @Component
 @RequiredArgsConstructor
 public class DatabaseSeeder implements CommandLineRunner {
@@ -25,7 +28,7 @@ public class DatabaseSeeder implements CommandLineRunner {
     private final PantryItemRepository pantryItemRepository;
     private final RawIngestPayloadRepository rawIngestPayloadRepository;
 
-    @Value("${cabinate.seed.enabled:true}")
+    @Value("${cabinate.seed.enabled:false}")
     private boolean seedOnStartup;
 
     @Override
@@ -61,13 +64,13 @@ public class DatabaseSeeder implements CommandLineRunner {
     }
 
     private int seedRecipes(boolean force) {
-        if (!force && recipeRepository.count() > 0) {
+        if (!force && recipeRepository.countByOwnerId(AccountContext.DEMO_ACCOUNT) > 0) {
             log.info("Recipes collection already has data. Skipping recipe seeding.");
             return 0;
         }
 
         if (force) {
-            recipeRepository.deleteAll();
+            recipeRepository.deleteByOwnerId(AccountContext.DEMO_ACCOUNT);
         }
 
         Instant now = Instant.now();
@@ -98,6 +101,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         .prepTimeMinutes(10)
                         .cookTimeMinutes(20)
                         .servings(4)
+                        .ownerId(AccountContext.DEMO_ACCOUNT)
                         .createdAt(now)
                         .updatedAt(now)
                         .build(),
@@ -127,6 +131,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         .prepTimeMinutes(10)
                         .cookTimeMinutes(15)
                         .servings(3)
+                        .ownerId(AccountContext.DEMO_ACCOUNT)
                         .createdAt(now)
                         .updatedAt(now)
                         .build(),
@@ -155,6 +160,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         .prepTimeMinutes(5)
                         .cookTimeMinutes(15)
                         .servings(2)
+                        .ownerId(AccountContext.DEMO_ACCOUNT)
                         .createdAt(now)
                         .updatedAt(now)
                         .build(),
@@ -181,6 +187,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         .prepTimeMinutes(3)
                         .cookTimeMinutes(5)
                         .servings(1)
+                        .ownerId(AccountContext.DEMO_ACCOUNT)
                         .createdAt(now)
                         .updatedAt(now)
                         .build(),
@@ -207,6 +214,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         .prepTimeMinutes(15)
                         .cookTimeMinutes(20)
                         .servings(2)
+                        .ownerId(AccountContext.DEMO_ACCOUNT)
                         .createdAt(now)
                         .updatedAt(now)
                         .build()
@@ -217,13 +225,13 @@ public class DatabaseSeeder implements CommandLineRunner {
     }
 
     private int seedPantry(boolean force) {
-        if (!force && pantryItemRepository.count() > 0) {
+        if (!force && pantryItemRepository.countByOwnerId(AccountContext.DEMO_ACCOUNT) > 0) {
             log.info("Pantry collection already has data. Skipping pantry seeding.");
             return 0;
         }
 
         if (force) {
-            pantryItemRepository.deleteAll();
+            pantryItemRepository.deleteByOwnerId(AccountContext.DEMO_ACCOUNT);
         }
 
         Instant now = Instant.now();
@@ -238,6 +246,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         .category("PRODUCE")
                         .location("FRIDGE")
                         .expirationDate(today.plusDays(2))
+                        .ownerId(AccountContext.DEMO_ACCOUNT)
                         .createdAt(now)
                         .updatedAt(now)
                         .build(),
@@ -249,6 +258,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         .category("DAIRY")
                         .location("FRIDGE")
                         .expirationDate(today.plusDays(4))
+                        .ownerId(AccountContext.DEMO_ACCOUNT)
                         .createdAt(now)
                         .updatedAt(now)
                         .build(),
@@ -260,6 +270,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         .category("DAIRY")
                         .location("FRIDGE")
                         .expirationDate(today.plusDays(6))
+                        .ownerId(AccountContext.DEMO_ACCOUNT)
                         .createdAt(now)
                         .updatedAt(now)
                         .build(),
@@ -272,6 +283,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         .category("DAIRY")
                         .location("FRIDGE")
                         .expirationDate(today.plusDays(14))
+                        .ownerId(AccountContext.DEMO_ACCOUNT)
                         .createdAt(now)
                         .updatedAt(now)
                         .build(),
@@ -283,6 +295,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         .category("MEAT")
                         .location("FREEZER")
                         .expirationDate(today.plusDays(90))
+                        .ownerId(AccountContext.DEMO_ACCOUNT)
                         .createdAt(now)
                         .updatedAt(now)
                         .build(),
@@ -295,6 +308,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         .category("PANTRY")
                         .location("CABINET")
                         .expirationDate(today.plusDays(180))
+                        .ownerId(AccountContext.DEMO_ACCOUNT)
                         .createdAt(now)
                         .updatedAt(now)
                         .build(),
@@ -306,6 +320,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         .category("GRAINS")
                         .location("CABINET")
                         .expirationDate(today.plusDays(120))
+                        .ownerId(AccountContext.DEMO_ACCOUNT)
                         .createdAt(now)
                         .updatedAt(now)
                         .build(),
@@ -317,6 +332,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         .category("PANTRY")
                         .location("CABINET")
                         .expirationDate(today.plusDays(240))
+                        .ownerId(AccountContext.DEMO_ACCOUNT)
                         .createdAt(now)
                         .updatedAt(now)
                         .build(),
@@ -328,6 +344,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         .category("PANTRY")
                         .location("CABINET")
                         .expirationDate(today.plusDays(365))
+                        .ownerId(AccountContext.DEMO_ACCOUNT)
                         .createdAt(now)
                         .updatedAt(now)
                         .build(),
@@ -339,6 +356,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         .category("PRODUCE")
                         .location("CABINET")
                         .expirationDate(today.plusDays(25))
+                        .ownerId(AccountContext.DEMO_ACCOUNT)
                         .createdAt(now)
                         .updatedAt(now)
                         .build()
@@ -349,13 +367,13 @@ public class DatabaseSeeder implements CommandLineRunner {
     }
 
     private int seedIngestPayloads(boolean force) {
-        if (!force && rawIngestPayloadRepository.count() > 0) {
+        if (!force && rawIngestPayloadRepository.countByOwnerId(AccountContext.DEMO_ACCOUNT) > 0) {
             log.info("Raw Ingest collection already has data. Skipping ingest seeding.");
             return 0;
         }
 
         if (force) {
-            rawIngestPayloadRepository.deleteAll();
+            rawIngestPayloadRepository.deleteByOwnerId(AccountContext.DEMO_ACCOUNT);
         }
 
         Instant now = Instant.now();
@@ -371,6 +389,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 """)
                         .metadata(Map.of("author", "Dana Shultz", "tags", List.of("vegan", "gluten-free", "quick-dinner")))
                         .status("PENDING")
+                        .ownerId(AccountContext.DEMO_ACCOUNT)
                         .createdAt(now)
                         .updatedAt(now)
                         .build(),
@@ -382,6 +401,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                         .payload("Grandma's lentil soup: 2 cups brown lentils, 1 yellow onion diced, 2 carrots diced, 2 celery stalks chopped, 6 cups vegetable broth, 1 bay leaf, 1 tsp cumin. Sauté aromatics in olive oil, add rinsed lentils and broth. Simmer for 40 minutes. Squeeze fresh lemon juice right before serving.")
                         .metadata(Map.of("pastedFrom", "Notes App", "starred", true))
                         .status("PENDING")
+                        .ownerId(AccountContext.DEMO_ACCOUNT)
                         .createdAt(now)
                         .updatedAt(now)
                         .build(),
@@ -405,6 +425,7 @@ public class DatabaseSeeder implements CommandLineRunner {
                                 """)
                         .metadata(Map.of("externalProvider", "Spoonacular", "version", "1.2"))
                         .status("PROCESSED")
+                        .ownerId(AccountContext.DEMO_ACCOUNT)
                         .createdAt(now)
                         .updatedAt(now)
                         .build()

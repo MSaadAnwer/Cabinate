@@ -2,8 +2,11 @@ package com.cabinate.api.ingest;
 
 import java.util.List;
 import jakarta.validation.Valid;
+import com.cabinate.api.common.pagination.PageQuery;
+import com.cabinate.api.common.pagination.PageResponse;
+import org.springframework.data.domain.Sort;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,7 +21,6 @@ import com.cabinate.api.ingest.dto.RawIngestPayloadResponse;
 import com.cabinate.api.ingest.dto.UpdateIngestStatusRequest;
 import lombok.RequiredArgsConstructor;
 
-@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/v1/ingest")
 @RequiredArgsConstructor
@@ -42,6 +44,12 @@ public class RawIngestController {
     @GetMapping("/{id}")
     public RawIngestPayloadResponse getPayloadById(@PathVariable String id) {
         return rawIngestService.getPayloadById(id);
+    }
+
+    @GetMapping("/page")
+    public PageResponse<RawIngestPayloadResponse> getPayloadPage(@RequestParam(required = false) String status,
+            @RequestParam(required = false) String source, @Valid @ModelAttribute PageQuery query) {
+        return rawIngestService.getPayloadPage(status, source, query.sortedBy(Sort.by(Sort.Direction.DESC, "createdAt")));
     }
 
     @PatchMapping("/{id}/status")

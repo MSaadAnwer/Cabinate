@@ -13,7 +13,8 @@ public record PantryItemResponse(
         String location,
         LocalDate expirationDate,
         Instant createdAt,
-        Instant updatedAt) {
+        Instant updatedAt,
+        Long version) {
 
     public static PantryItemResponse fromEntity(PantryItem item) {
         if (item == null) {
@@ -28,6 +29,7 @@ public record PantryItemResponse(
                 item.getLocation(),
                 item.getExpirationDate(),
                 item.getCreatedAt(),
-                item.getUpdatedAt());
+                item.getUpdatedAt(),
+                item.getVersion());
     }
 }

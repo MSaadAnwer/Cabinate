@@ -13,7 +13,8 @@ public record RecipeResponse(
         Integer cookTimeMinutes,
         Integer servings,
         Instant createdAt,
-        Instant updatedAt) {
+        Instant updatedAt,
+        Long version) {
 
     public static RecipeResponse fromEntity(Recipe recipe) {
         if (recipe == null) {
@@ -29,6 +30,7 @@ public record RecipeResponse(
                 recipe.getCookTimeMinutes(),
                 recipe.getServings(),
                 recipe.getCreatedAt(),
-                recipe.getUpdatedAt());
+                recipe.getUpdatedAt(),
+                recipe.getVersion());
     }
 }

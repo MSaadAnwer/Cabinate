@@ -2,6 +2,8 @@ package com.cabinate.api.ingest;
 
 import java.time.Instant;
 import java.util.List;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import com.cabinate.api.common.security.AccountContext;
 import org.mockito.junit.jupiter.MockitoExtension;
 import com.cabinate.api.common.exception.ResourceNotFoundException;
 import com.cabinate.api.ingest.dto.IngestPayloadRequest;
@@ -34,9 +37,13 @@ class RawIngestServiceTest {
 
     private RawIngestPayload samplePayload;
 
+    @Mock
+    private AccountContext account;
+
     @BeforeEach
     void setUp() {
-        samplePayload = RawIngestPayload.builder()
+        when(account.id()).thenReturn("account-a");
+        samplePayload = RawIngestPayload.builder().ownerId("account-a").version(0L)
                 .id("ingest-1")
                 .source("WEB_SCRAPE")
                 .sourceUrl("https://recipes.com/pasta")
@@ -80,7 +87,7 @@ class RawIngestServiceTest {
 
     @Test
     void getPayloadById_WhenFound_ShouldReturnResponse() {
-        when(repository.findById("ingest-1")).thenReturn(Optional.of(samplePayload));
+        when(repository.findByIdAndOwnerId("ingest-1", "account-a")).thenReturn(Optional.of(samplePayload));
 
         RawIngestPayloadResponse response = rawIngestService.getPayloadById("ingest-1");
 
@@ -90,7 +97,7 @@ class RawIngestServiceTest {
 
     @Test
     void getPayloadById_WhenNotFound_ShouldThrowException() {
-        when(repository.findById("missing")).thenReturn(Optional.empty());
+        when(repository.findByIdAndOwnerId("missing", "account-a")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> rawIngestService.getPayloadById("missing"))
                 .isInstanceOf(ResourceNotFoundException.class)
@@ -99,50 +106,50 @@ class RawIngestServiceTest {
 
     @Test
     void getPayloads_WithoutFilters_ShouldReturnAll() {
-        when(repository.findAll()).thenReturn(List.of(samplePayload));
+        when(repository.findByOwnerId("account-a", Pageable.unpaged())).thenReturn(new PageImpl<>(List.of(samplePayload)));
 
         List<RawIngestPayloadResponse> results = rawIngestService.getPayloads(null, null);
 
         assertThat(results).hasSize(1);
-        verify(repository).findAll();
+        verify(repository).findByOwnerId("account-a", Pageable.unpaged());
     }
 
     @Test
     void getPayloads_WithStatusAndSource_ShouldQueryBoth() {
-        when(repository.findByStatusIgnoreCaseAndSourceIgnoreCase("PENDING", "WEB_SCRAPE"))
-                .thenReturn(List.of(samplePayload));
+        when(repository.findByOwnerIdAndStatusIgnoreCaseAndSourceIgnoreCase("account-a", "PENDING", "WEB_SCRAPE", Pageable.unpaged()))
+                .thenReturn(new PageImpl<>(List.of(samplePayload)));
 
         List<RawIngestPayloadResponse> results = rawIngestService.getPayloads("PENDING", "WEB_SCRAPE");
 
         assertThat(results).hasSize(1);
-        verify(repository).findByStatusIgnoreCaseAndSourceIgnoreCase("PENDING", "WEB_SCRAPE");
+        verify(repository).findByOwnerIdAndStatusIgnoreCaseAndSourceIgnoreCase("account-a", "PENDING", "WEB_SCRAPE", Pageable.unpaged());
     }
 
     @Test
     void getPayloads_WithStatusOnly_ShouldQueryStatus() {
-        when(repository.findByStatusIgnoreCase("PENDING")).thenReturn(List.of(samplePayload));
+        when(repository.findByOwnerIdAndStatusIgnoreCase("account-a", "PENDING", Pageable.unpaged())).thenReturn(new PageImpl<>(List.of(samplePayload)));
 
         List<RawIngestPayloadResponse> results = rawIngestService.getPayloads("PENDING", null);
 
         assertThat(results).hasSize(1);
-        verify(repository).findByStatusIgnoreCase("PENDING");
+        verify(repository).findByOwnerIdAndStatusIgnoreCase("account-a", "PENDING", Pageable.unpaged());
     }
 
     @Test
     void getPayloads_WithSourceOnly_ShouldQuerySource() {
-        when(repository.findBySourceIgnoreCase("WEB_SCRAPE")).thenReturn(List.of(samplePayload));
+        when(repository.findByOwnerIdAndSourceIgnoreCase("account-a", "WEB_SCRAPE", Pageable.unpaged())).thenReturn(new PageImpl<>(List.of(samplePayload)));
 
         List<RawIngestPayloadResponse> results = rawIngestService.getPayloads(null, "WEB_SCRAPE");
 
         assertThat(results).hasSize(1);
-        verify(repository).findBySourceIgnoreCase("WEB_SCRAPE");
+        verify(repository).findByOwnerIdAndSourceIgnoreCase("account-a", "WEB_SCRAPE", Pageable.unpaged());
     }
 
     @Test
     void updateStatus_WhenFound_ShouldUpdateStatusAndReturnResponse() {
-        UpdateIngestStatusRequest updateReq = new UpdateIngestStatusRequest("processed");
+        UpdateIngestStatusRequest updateReq = new UpdateIngestStatusRequest("processed", 0L);
 
-        when(repository.findById("ingest-1")).thenReturn(Optional.of(samplePayload));
+        when(repository.findByIdAndOwnerId("ingest-1", "account-a")).thenReturn(Optional.of(samplePayload));
         when(repository.save(any(RawIngestPayload.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         RawIngestPayloadResponse response = rawIngestService.updateStatus("ingest-1", updateReq);
@@ -153,9 +160,9 @@ class RawIngestServiceTest {
 
     @Test
     void updateStatus_WhenNotFound_ShouldThrowException() {
-        UpdateIngestStatusRequest updateReq = new UpdateIngestStatusRequest("PROCESSED");
+        UpdateIngestStatusRequest updateReq = new UpdateIngestStatusRequest("PROCESSED", 0L);
 
-        when(repository.findById("missing")).thenReturn(Optional.empty());
+        when(repository.findByIdAndOwnerId("missing", "account-a")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> rawIngestService.updateStatus("missing", updateReq))
                 .isInstanceOf(ResourceNotFoundException.class);

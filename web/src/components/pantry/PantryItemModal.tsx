@@ -44,6 +44,7 @@ const PantryItemForm: React.FC<PantryItemFormProps> = ({ initialItem, onClose, o
       setIsSubmitting(true);
       setErrorMessage('');
       const payload = {
+        ...(initialItem ? { version: initialItem.version } : {}),
         name: name.trim(),
         quantity: Number(quantity),
         unit: unit.trim(),

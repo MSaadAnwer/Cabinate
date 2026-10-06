@@ -2,6 +2,7 @@ package com.cabinate.api.recipe.dto;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record UpdateRecipeRequest(
@@ -16,5 +17,6 @@ public record UpdateRecipeRequest(
 
         @Min(value = 0, message = "Cook time cannot be negative") Integer cookTimeMinutes,
 
-        @Min(value = 1, message = "Servings must be at least 1") Integer servings) {
+        @Min(value = 1, message = "Servings must be at least 1") Integer servings,
+        @NotNull(message = "The record version is required") @Min(0) Long version) {
 }

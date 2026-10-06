@@ -3,6 +3,8 @@ package com.cabinate.api.pantry;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -10,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import com.cabinate.api.common.security.AccountContext;
 import org.mockito.junit.jupiter.MockitoExtension;
 import com.cabinate.api.common.exception.ResourceNotFoundException;
 import com.cabinate.api.pantry.dto.CreatePantryItemRequest;
@@ -34,9 +37,13 @@ class PantryItemServiceTest {
 
     private PantryItem sampleItem;
 
+    @Mock
+    private AccountContext account;
+
     @BeforeEach
     void setUp() {
-        sampleItem = PantryItem.builder()
+        when(account.id()).thenReturn("account-a");
+        sampleItem = PantryItem.builder().ownerId("account-a").version(0L)
                 .id("pantry-1")
                 .name("Oat Milk")
                 .quantity(1.5)
@@ -75,7 +82,7 @@ class PantryItemServiceTest {
 
     @Test
     void getItemById_WhenFound_ShouldReturnResponse() {
-        when(pantryItemRepository.findById("pantry-1")).thenReturn(Optional.of(sampleItem));
+        when(pantryItemRepository.findByIdAndOwnerId("pantry-1", "account-a")).thenReturn(Optional.of(sampleItem));
 
         PantryItemResponse response = pantryItemService.getItemById("pantry-1");
 
@@ -85,7 +92,7 @@ class PantryItemServiceTest {
 
     @Test
     void getItemById_WhenNotFound_ShouldThrowException() {
-        when(pantryItemRepository.findById("missing")).thenReturn(Optional.empty());
+        when(pantryItemRepository.findByIdAndOwnerId("missing", "account-a")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> pantryItemService.getItemById("missing"))
                 .isInstanceOf(ResourceNotFoundException.class)
@@ -94,63 +101,63 @@ class PantryItemServiceTest {
 
     @Test
     void getAllItems_WithoutFilters_ShouldReturnAll() {
-        when(pantryItemRepository.findAll()).thenReturn(List.of(sampleItem));
+        when(pantryItemRepository.findByOwnerId("account-a", Pageable.unpaged())).thenReturn(new PageImpl<>(List.of(sampleItem)));
 
         List<PantryItemResponse> items = pantryItemService.getAllItems(null, null);
 
         assertThat(items).hasSize(1);
-        verify(pantryItemRepository).findAll();
+        verify(pantryItemRepository).findByOwnerId("account-a", Pageable.unpaged());
     }
 
     @Test
     void getAllItems_WithCategoryAndSearch_ShouldQueryCombined() {
-        when(pantryItemRepository.findByCategoryIgnoreCaseAndNameContainingIgnoreCase("DAIRY", "milk"))
-                .thenReturn(List.of(sampleItem));
+        when(pantryItemRepository.findByOwnerIdAndCategoryIgnoreCaseAndNameContainingIgnoreCase("account-a", "DAIRY", "milk", Pageable.unpaged()))
+                .thenReturn(new PageImpl<>(List.of(sampleItem)));
 
         List<PantryItemResponse> items = pantryItemService.getAllItems("DAIRY", "milk");
 
         assertThat(items).hasSize(1);
-        verify(pantryItemRepository).findByCategoryIgnoreCaseAndNameContainingIgnoreCase("DAIRY", "milk");
+        verify(pantryItemRepository).findByOwnerIdAndCategoryIgnoreCaseAndNameContainingIgnoreCase("account-a", "DAIRY", "milk", Pageable.unpaged());
     }
 
     @Test
     void getAllItems_WithCategoryOnly_ShouldQueryCategory() {
-        when(pantryItemRepository.findByCategoryIgnoreCase("DAIRY")).thenReturn(List.of(sampleItem));
+        when(pantryItemRepository.findByOwnerIdAndCategoryIgnoreCase("account-a", "DAIRY", Pageable.unpaged())).thenReturn(new PageImpl<>(List.of(sampleItem)));
 
         List<PantryItemResponse> items = pantryItemService.getAllItems("DAIRY", null);
 
         assertThat(items).hasSize(1);
-        verify(pantryItemRepository).findByCategoryIgnoreCase("DAIRY");
+        verify(pantryItemRepository).findByOwnerIdAndCategoryIgnoreCase("account-a", "DAIRY", Pageable.unpaged());
     }
 
     @Test
     void getAllItems_WithSearchOnly_ShouldQueryName() {
-        when(pantryItemRepository.findByNameContainingIgnoreCase("milk")).thenReturn(List.of(sampleItem));
+        when(pantryItemRepository.findByOwnerIdAndNameContainingIgnoreCase("account-a", "milk", Pageable.unpaged())).thenReturn(new PageImpl<>(List.of(sampleItem)));
 
         List<PantryItemResponse> items = pantryItemService.getAllItems(null, "milk");
 
         assertThat(items).hasSize(1);
-        verify(pantryItemRepository).findByNameContainingIgnoreCase("milk");
+        verify(pantryItemRepository).findByOwnerIdAndNameContainingIgnoreCase("account-a", "milk", Pageable.unpaged());
     }
 
     @Test
     void getExpiringItems_ShouldQueryRepositoryWithDate() {
         LocalDate date = LocalDate.now().plusDays(3);
-        when(pantryItemRepository.findByExpirationDateLessThanEqualOrderByExpirationDateAsc(date))
+        when(pantryItemRepository.findByOwnerIdAndExpirationDateLessThanEqualOrderByExpirationDateAsc("account-a", date))
                 .thenReturn(List.of(sampleItem));
 
         List<PantryItemResponse> expiring = pantryItemService.getExpiringItems(date);
 
         assertThat(expiring).hasSize(1);
-        verify(pantryItemRepository).findByExpirationDateLessThanEqualOrderByExpirationDateAsc(date);
+        verify(pantryItemRepository).findByOwnerIdAndExpirationDateLessThanEqualOrderByExpirationDateAsc("account-a", date);
     }
 
     @Test
     void updateItem_WhenFound_ShouldUpdateAndReturnResponse() {
         UpdatePantryItemRequest updateReq = new UpdatePantryItemRequest(
-                "Organic Oat Milk", 2.0, "liters", "DAIRY", "FRIDGE", LocalDate.now().plusDays(10));
+                "Organic Oat Milk", 2.0, "liters", "DAIRY", "FRIDGE", LocalDate.now().plusDays(10), 0L);
 
-        when(pantryItemRepository.findById("pantry-1")).thenReturn(Optional.of(sampleItem));
+        when(pantryItemRepository.findByIdAndOwnerId("pantry-1", "account-a")).thenReturn(Optional.of(sampleItem));
         when(pantryItemRepository.save(any(PantryItem.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         PantryItemResponse response = pantryItemService.updateItem("pantry-1", updateReq);
@@ -163,9 +170,9 @@ class PantryItemServiceTest {
     @Test
     void updateItem_WhenNotFound_ShouldThrowException() {
         UpdatePantryItemRequest updateReq = new UpdatePantryItemRequest(
-                "Organic Oat Milk", 2.0, "liters", "DAIRY", "FRIDGE", null);
+                "Organic Oat Milk", 2.0, "liters", "DAIRY", "FRIDGE", null, 0L);
 
-        when(pantryItemRepository.findById("missing")).thenReturn(Optional.empty());
+        when(pantryItemRepository.findByIdAndOwnerId("missing", "account-a")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> pantryItemService.updateItem("missing", updateReq))
                 .isInstanceOf(ResourceNotFoundException.class);
@@ -174,19 +181,19 @@ class PantryItemServiceTest {
 
     @Test
     void deleteItem_WhenFound_ShouldDelete() {
-        when(pantryItemRepository.existsById("pantry-1")).thenReturn(true);
+        when(pantryItemRepository.findByIdAndOwnerId("pantry-1", "account-a")).thenReturn(Optional.of(sampleItem));
 
-        pantryItemService.deleteItem("pantry-1");
+        pantryItemService.deleteItem("pantry-1", 0L);
 
-        verify(pantryItemRepository).deleteById("pantry-1");
+        verify(pantryItemRepository).delete(sampleItem);
     }
 
     @Test
     void deleteItem_WhenNotFound_ShouldThrowException() {
-        when(pantryItemRepository.existsById("missing")).thenReturn(false);
+        when(pantryItemRepository.findByIdAndOwnerId("missing", "account-a")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> pantryItemService.deleteItem("missing"))
+        assertThatThrownBy(() -> pantryItemService.deleteItem("missing", 0L))
                 .isInstanceOf(ResourceNotFoundException.class);
-        verify(pantryItemRepository, never()).deleteById(any());
+        verify(pantryItemRepository, never()).delete(any());
     }
 }

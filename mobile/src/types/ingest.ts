@@ -1,4 +1,5 @@
 export interface RawIngestPayload {
+  version: number;
   id: string;
   source: string;
   sourceUrl?: string | null;
@@ -19,5 +20,6 @@ export interface IngestPayloadRequest {
 }
 
 export interface UpdateIngestStatusRequest {
+  version: number;
   status: string;
 }

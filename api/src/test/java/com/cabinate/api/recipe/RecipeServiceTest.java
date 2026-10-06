@@ -2,6 +2,8 @@ package com.cabinate.api.recipe;
 
 import java.time.Instant;
 import java.util.List;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -9,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import com.cabinate.api.common.security.AccountContext;
 import org.mockito.junit.jupiter.MockitoExtension;
 import com.cabinate.api.common.exception.ResourceNotFoundException;
 import com.cabinate.api.recipe.dto.CreateRecipeRequest;
@@ -33,9 +36,13 @@ class RecipeServiceTest {
 
     private Recipe sampleRecipe;
 
+    @Mock
+    private AccountContext account;
+
     @BeforeEach
     void setUp() {
-        sampleRecipe = Recipe.builder()
+        when(account.id()).thenReturn("account-a");
+        sampleRecipe = Recipe.builder().ownerId("account-a").version(0L)
                 .id("rec-123")
                 .title("Avocado Toast")
                 .description("Crispy toast with fresh avocado")
@@ -83,7 +90,7 @@ class RecipeServiceTest {
 
     @Test
     void getRecipeById_WhenFound_ShouldReturnRecipeResponse() {
-        when(recipeRepository.findById("rec-123")).thenReturn(Optional.of(sampleRecipe));
+        when(recipeRepository.findByIdAndOwnerId("rec-123", "account-a")).thenReturn(Optional.of(sampleRecipe));
 
         RecipeResponse response = recipeService.getRecipeById("rec-123");
 
@@ -93,7 +100,7 @@ class RecipeServiceTest {
 
     @Test
     void getRecipeById_WhenNotFound_ShouldThrowResourceNotFoundException() {
-        when(recipeRepository.findById("rec-unknown")).thenReturn(Optional.empty());
+        when(recipeRepository.findByIdAndOwnerId("rec-unknown", "account-a")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> recipeService.getRecipeById("rec-unknown"))
                 .isInstanceOf(ResourceNotFoundException.class)
@@ -102,26 +109,26 @@ class RecipeServiceTest {
 
     @Test
     void getAllRecipes_WithoutSearch_ShouldReturnAll() {
-        when(recipeRepository.findAll()).thenReturn(List.of(sampleRecipe));
+        when(recipeRepository.findByOwnerId("account-a", Pageable.unpaged())).thenReturn(new PageImpl<>(List.of(sampleRecipe)));
 
         List<RecipeResponse> result = recipeService.getAllRecipes(null);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).id()).isEqualTo("rec-123");
-        verify(recipeRepository).findAll();
-        verify(recipeRepository, never()).findByTitleContainingIgnoreCase(any());
+        verify(recipeRepository).findByOwnerId("account-a", Pageable.unpaged());
+        verify(recipeRepository, never()).findByOwnerIdAndTitleContainingIgnoreCase(any(), any(), any());
     }
 
     @Test
     void getAllRecipes_WithSearch_ShouldQueryRepository() {
-        when(recipeRepository.findByTitleContainingIgnoreCase("avocado")).thenReturn(List.of(sampleRecipe));
+        when(recipeRepository.findByOwnerIdAndTitleContainingIgnoreCase("account-a", "avocado", Pageable.unpaged())).thenReturn(new PageImpl<>(List.of(sampleRecipe)));
 
         List<RecipeResponse> result = recipeService.getAllRecipes("avocado");
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).title()).isEqualTo("Avocado Toast");
-        verify(recipeRepository).findByTitleContainingIgnoreCase("avocado");
-        verify(recipeRepository, never()).findAll();
+        verify(recipeRepository).findByOwnerIdAndTitleContainingIgnoreCase("account-a", "avocado", Pageable.unpaged());
+        verify(recipeRepository, never()).findByOwnerId("account-a", Pageable.unpaged());
     }
 
     @Test
@@ -133,9 +140,9 @@ class RecipeServiceTest {
                 "Updated raw instructions",
                 10,
                 5,
-                2);
+                2, 0L);
 
-        when(recipeRepository.findById("rec-123")).thenReturn(Optional.of(sampleRecipe));
+        when(recipeRepository.findByIdAndOwnerId("rec-123", "account-a")).thenReturn(Optional.of(sampleRecipe));
         when(recipeRepository.save(any(Recipe.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         RecipeResponse response = recipeService.updateRecipe("rec-123", updateReq);
@@ -150,9 +157,9 @@ class RecipeServiceTest {
     @Test
     void updateRecipe_WhenNotFound_ShouldThrowException() {
         UpdateRecipeRequest updateReq = new UpdateRecipeRequest(
-                "Super Toast", null, null, "Raw instructions", null, null, 1);
+                "Super Toast", null, null, "Raw instructions", null, null, 1, 0L);
 
-        when(recipeRepository.findById("rec-unknown")).thenReturn(Optional.empty());
+        when(recipeRepository.findByIdAndOwnerId("rec-unknown", "account-a")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> recipeService.updateRecipe("rec-unknown", updateReq))
                 .isInstanceOf(ResourceNotFoundException.class);
@@ -161,19 +168,19 @@ class RecipeServiceTest {
 
     @Test
     void deleteRecipe_WhenExists_ShouldDelete() {
-        when(recipeRepository.existsById("rec-123")).thenReturn(true);
+        when(recipeRepository.findByIdAndOwnerId("rec-123", "account-a")).thenReturn(Optional.of(sampleRecipe));
 
-        recipeService.deleteRecipe("rec-123");
+        recipeService.deleteRecipe("rec-123", 0L);
 
-        verify(recipeRepository).deleteById("rec-123");
+        verify(recipeRepository).delete(sampleRecipe);
     }
 
     @Test
     void deleteRecipe_WhenNotExists_ShouldThrowException() {
-        when(recipeRepository.existsById("rec-unknown")).thenReturn(false);
+        when(recipeRepository.findByIdAndOwnerId("rec-unknown", "account-a")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> recipeService.deleteRecipe("rec-unknown"))
+        assertThatThrownBy(() -> recipeService.deleteRecipe("rec-unknown", 0L))
                 .isInstanceOf(ResourceNotFoundException.class);
-        verify(recipeRepository, never()).deleteById(any());
+        verify(recipeRepository, never()).delete(any());
     }
 }

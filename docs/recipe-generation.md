@@ -52,8 +52,8 @@ there are no canned recipes presented as generated results.
 120 characters each). It returns exactly three objects with `title`, `description`,
 `ingredients` (display strings), `steps`, `prepTimeMinutes`, `cookTimeMinutes`, and
 `servings`. The endpoint reads the same pantry as existing pantry APIs. This repository
-currently has a shared pantry and no user authentication; account scoping must be
-added with authentication before a multi-user deployment.
+uses the pantry belonging to the validated OpenID Connect account. Provider and
+account setup are described in [account access](account-access.md).
 
 The service sends at most 100 available pantry items, earliest expiration first,
 to Bedrock. Zero/negative quantities and dates before the server's current date are
@@ -72,8 +72,7 @@ returns an error and the UI keeps the previous set and draft. Empty stock return
 simultaneous generations per API instance returns 429. Provider calls time out after
 10 seconds each. Failed calls are never automatically retried; successful partial
 responses may trigger a request for the remaining suggestions. Client deadlines are 65 seconds.
-The concurrency cap is not a per-account spending quota; add authenticated rate
-limits before public deployment.
+The concurrency cap applies per API instance. Per-account rate limits remain future work.
 
 ## Verification
 

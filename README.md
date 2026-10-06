@@ -98,7 +98,13 @@ Navigate to the `api` folder and start the server:
 # On Windows PowerShell
 .\mvnw.cmd spring-boot:run
 ```
-The API starts on port `8080`. Seeding runs automatically on first boot if collections are empty.
+The API starts on port `8080`. Demo seeding and the reset endpoint are disabled by default.
+For local development with demo data, run `.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=dev"`.
+The `dev` profile seeds empty collections and enables `/api/v1/seed`; use it only on a local development server.
+See [backend configuration and review notes](docs/backend-review.md) for CORS, paginated APIs, and deployment boundaries.
+For authenticated use, configure the OpenID Connect issuer and public clients, then migrate
+existing data to the intended account using the [account access guide](docs/account-access.md).
+Clients now include sign-in and sign-out, and updates/deletes require the version last read.
 
 ### 4. Run the iOS-First Mobile App
 Navigate to the `mobile` folder, set the API URL your phone can reach, and start Expo:

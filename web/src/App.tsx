@@ -150,7 +150,9 @@ export const App: React.FC = () => {
 
   const handleDeletePantryItem = async (id: string) => {
     try {
-      await pantryApi.delete(id);
+      const item = pantryItems.find((value) => value.id === id);
+      if (!item) return;
+      await pantryApi.delete(id, item.version);
       setPantryItems((prev) => prev.filter((item) => item.id !== id));
       setExpiringItems((prev) => prev.filter((item) => item.id !== id));
       addToast('Item removed from pantry', 'info');
@@ -173,7 +175,9 @@ export const App: React.FC = () => {
 
   const handleDeleteRecipe = async (id: string) => {
     try {
-      await recipeApi.delete(id);
+      const recipe = recipes.find((value) => value.id === id);
+      if (!recipe) return;
+      await recipeApi.delete(id, recipe.version);
       setRecipes((prev) => prev.filter((r) => r.id !== id));
       addToast('Recipe deleted', 'info');
     } catch (err: any) {
@@ -195,7 +199,7 @@ export const App: React.FC = () => {
 
   const handleUpdateIngestStatus = async (id: string, status: string) => {
     try {
-      const updated = await ingestApi.updateStatus(id, status);
+      const updated = await ingestApi.updateStatus(id, status, ingestPayloads.find((value) => value.id === id)!.version);
       setIngestPayloads((prev) => prev.map((p) => (p.id === id ? updated : p)));
       addToast(`Status updated to ${status}`, 'info');
     } catch (err: any) {

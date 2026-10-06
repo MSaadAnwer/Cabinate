@@ -1,4 +1,5 @@
 export interface PantryItem {
+  version: number;
   id: string;
   name: string;
   quantity: number;
@@ -20,6 +21,7 @@ export interface CreatePantryItemRequest {
 }
 
 export interface UpdatePantryItemRequest {
+  version: number;
   name: string;
   quantity: number;
   unit: string;

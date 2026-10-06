@@ -31,6 +31,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ExtendWith(MockitoExtension.class)
 class RawIngestControllerTest {
 
+    @Test
+    void rejectsUnsupportedStatusBeforeUpdatingRecord() throws Exception {
+        mockMvc.perform(patch("/api/v1/ingest/raw-1/status")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"version\":0,\"status\":\"DELETED\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.status").exists());
+        org.mockito.Mockito.verifyNoInteractions(rawIngestService);
+    }
+
     private MockMvc mockMvc;
 
     @Mock
@@ -61,7 +71,7 @@ class RawIngestControllerTest {
                 Map.of("domain", "example.com"),
                 "PENDING",
                 Instant.now(),
-                Instant.now());
+                Instant.now(), 0L);
 
         when(rawIngestService.ingest(any(IngestPayloadRequest.class))).thenReturn(response);
 
@@ -103,7 +113,7 @@ class RawIngestControllerTest {
     @Test
     void getPayloads_ShouldReturnList() throws Exception {
         RawIngestPayloadResponse item = new RawIngestPayloadResponse(
-                "ingest-1", "CLIPBOARD", null, "text/plain", "Raw recipe text", null, "PENDING", Instant.now(), Instant.now());
+                "ingest-1", "CLIPBOARD", null, "text/plain", "Raw recipe text", null, "PENDING", Instant.now(), Instant.now(), 0L);
 
         when(rawIngestService.getPayloads("PENDING", null)).thenReturn(List.of(item));
 
@@ -116,7 +126,7 @@ class RawIngestControllerTest {
     @Test
     void getPayloadById_WhenFound_ShouldReturn200() throws Exception {
         RawIngestPayloadResponse item = new RawIngestPayloadResponse(
-                "ingest-1", "CLIPBOARD", null, "text/plain", "Raw recipe text", null, "PENDING", Instant.now(), Instant.now());
+                "ingest-1", "CLIPBOARD", null, "text/plain", "Raw recipe text", null, "PENDING", Instant.now(), Instant.now(), 0L);
 
         when(rawIngestService.getPayloadById("ingest-1")).thenReturn(item);
 
@@ -138,13 +148,14 @@ class RawIngestControllerTest {
     @Test
     void updateStatus_WhenValid_ShouldReturn200() throws Exception {
         RawIngestPayloadResponse response = new RawIngestPayloadResponse(
-                "ingest-1", "WEB_SCRAPE", null, "text/html", "Content", null, "PROCESSED", Instant.now(), Instant.now());
+                "ingest-1", "WEB_SCRAPE", null, "text/html", "Content", null, "PROCESSED", Instant.now(), Instant.now(), 0L);
 
         when(rawIngestService.updateStatus(eq("ingest-1"), any(UpdateIngestStatusRequest.class)))
                 .thenReturn(response);
 
         String patchPayload = """
                 {
+                    "version": 0,
                     "status": "PROCESSED"
                 }
                 """;
@@ -163,6 +174,7 @@ class RawIngestControllerTest {
 
         String patchPayload = """
                 {
+                    "version": 0,
                     "status": "FAILED"
                 }
                 """;

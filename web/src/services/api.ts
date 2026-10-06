@@ -1,50 +1,13 @@
 import type { PantryItem, CreatePantryItemRequest, UpdatePantryItemRequest } from '../types/pantry';
 import type { Recipe, CreateRecipeRequest, UpdateRecipeRequest, GeneratedRecipe } from '../types/recipe';
 import type { RawIngestPayload, IngestPayloadRequest } from '../types/ingest';
-import type { ApiErrorResponse, SeedResponse } from '../types/common';
+import type { SeedResponse } from '../types/common';
+import { authenticatedJson } from '../../../shared/authenticated-http';
 
 const BASE_URL = '/api/v1';
 
-async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${BASE_URL}${endpoint}`;
-  const headers = {
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
-    ...options.headers,
-  };
-
-  try {
-    const response = await fetch(url, { ...options, headers });
-
-    if (!response.ok) {
-      let errorBody: ApiErrorResponse;
-      try {
-        errorBody = await response.json();
-      } catch {
-        errorBody = {
-          status: response.status,
-          error: response.statusText,
-          message: `Request failed with status ${response.status}`,
-        };
-      }
-      throw errorBody;
-    }
-
-    if (response.status === 204) {
-      return {} as T;
-    }
-
-    return await response.json();
-  } catch (error: any) {
-    if (error && error.status && error.message) {
-      throw error;
-    }
-    throw {
-      status: 0,
-      error: 'Network Error',
-      message: error?.message || 'Unable to connect to Cabinate API. Ensure Spring Boot is running on port 8080.',
-    } as ApiErrorResponse;
-  }
+function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  return authenticatedJson<T>(`${BASE_URL}${endpoint}`, options, endpoint === '/recipes/generate' ? 65000 : 15000);
 }
 
 export const pantryApi = {
@@ -79,9 +42,10 @@ export const pantryApi = {
     });
   },
 
-  delete: (id: string): Promise<void> => {
+  delete: (id: string, version: number): Promise<void> => {
     return request<void>(`/pantry/${encodeURIComponent(id)}`, {
       method: 'DELETE',
+      headers: { 'If-Match': `"${version}"` },
     });
   },
 };
@@ -125,9 +89,10 @@ export const recipeApi = {
     });
   },
 
-  delete: (id: string): Promise<void> => {
+  delete: (id: string, version: number): Promise<void> => {
     return request<void>(`/recipes/${encodeURIComponent(id)}`, {
       method: 'DELETE',
+      headers: { 'If-Match': `"${version}"` },
     });
   },
 };
@@ -152,10 +117,10 @@ export const ingestApi = {
     });
   },
 
-  updateStatus: (id: string, status: string): Promise<RawIngestPayload> => {
+  updateStatus: (id: string, status: string, version: number): Promise<RawIngestPayload> => {
     return request<RawIngestPayload>(`/ingest/${encodeURIComponent(id)}/status`, {
       method: 'PATCH',
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, version }),
     });
   },
 };

@@ -9,6 +9,7 @@ export interface GeneratedRecipe {
 }
 
 export interface Recipe {
+  version: number;
   id: string;
   title: string;
   description?: string | null;
@@ -32,6 +33,7 @@ export interface CreateRecipeRequest {
 }
 
 export interface UpdateRecipeRequest {
+  version: number;
   title: string;
   description?: string;
   sourceUrl?: string;

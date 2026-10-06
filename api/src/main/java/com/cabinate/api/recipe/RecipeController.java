@@ -2,8 +2,13 @@ package com.cabinate.api.recipe;
 
 import java.util.List;
 import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.RequestHeader;
+import com.cabinate.api.common.persistence.WriteVersion;
+import com.cabinate.api.common.pagination.PageQuery;
+import com.cabinate.api.common.pagination.PageResponse;
+import org.springframework.data.domain.Sort;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,7 +24,6 @@ import com.cabinate.api.recipe.dto.RecipeResponse;
 import com.cabinate.api.recipe.dto.UpdateRecipeRequest;
 import lombok.RequiredArgsConstructor;
 
-@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/v1/recipes")
 @RequiredArgsConstructor
@@ -50,6 +54,12 @@ public class RecipeController {
         return recipeService.getRecipeById(id);
     }
 
+    @GetMapping("/page")
+    public PageResponse<RecipeResponse> getRecipePage(@RequestParam(required = false) String search,
+            @Valid @ModelAttribute PageQuery query) {
+        return recipeService.getRecipePage(search, query.sortedBy(Sort.by(Sort.Direction.DESC, "createdAt")));
+    }
+
     @PutMapping("/{id}")
     public RecipeResponse updateRecipe(
             @PathVariable String id,
@@ -59,7 +69,7 @@ public class RecipeController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteRecipe(@PathVariable String id) {
-        recipeService.deleteRecipe(id);
+    public void deleteRecipe(@PathVariable String id, @RequestHeader(value = "If-Match", required = false) String version) {
+        recipeService.deleteRecipe(id, WriteVersion.parse(version));
     }
 }

@@ -12,6 +12,7 @@ import {
   s,
 } from "../components/ui";
 import { useKitchen } from "../state/kitchen-store";
+import { useAuth } from "../state/auth";
 import { daysUntil, expiryLabel } from "../utils/kitchen";
 import { ingestApi } from "../services/api";
 import type { RawIngestPayload } from "../types/ingest";
@@ -77,6 +78,7 @@ export function NotificationsScreen() {
   );
 }
 export function AccountScreen() {
+  const { identity, signOut } = useAuth();
   const {
     data,
     pantry,
@@ -99,9 +101,9 @@ export function AccountScreen() {
         <View style={s.card}>
           <Text style={s.heading}>Account details</Text>
           <Text style={s.body}>
-            Your profile, preferences, and household settings will live here.
+            {identity.development ? "Local development account" : "Your pantry and cookbook belong to your signed-in account."}
           </Text>
-          <Text style={s.muted}>Account sign-in is coming later.</Text>
+          {!identity.development && <Button title="Sign out" secondary onPress={() => void signOut().catch(() => {})} />}
         </View>
         <View style={s.card}>
           <Text style={s.eyebrow}>In your Cabinate</Text>

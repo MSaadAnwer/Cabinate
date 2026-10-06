@@ -18,6 +18,7 @@ import {
   s,
 } from "../components/ui";
 import { useFeedback } from "../components/feedback";
+import { colors } from "../components/tokens";
 import { useFormDraft } from "../components/form-draft";
 import { useKitchen } from "../state/kitchen-store";
 import {
@@ -209,6 +210,10 @@ export function ListDetailScreen() {
   const { data, update, ready } = useKitchen();
   const { notify } = useFeedback();
   const list = data.lists.find((item) => item.id === id);
+  const [hidePickedUp, setHidePickedUp] = useState(false);
+  const total = list?.items.length || 0;
+  const pickedUp = list?.items.filter((item) => item.checked).length || 0;
+  const remaining = total - pickedUp;
   const [itemName, setItemName] = useState(""),
     [category, setCategory] = useState<Category | null>(null);
   const [showComposer, setShowComposer] = useState(false),
@@ -422,10 +427,41 @@ export function ListDetailScreen() {
           onPress={() => setConfirmDelete(true)}
         />
       </View>
-      <Text style={s.muted}>
-        {list?.items.filter((item) => item.checked).length || 0} of{" "}
-        {list?.items.length || 0} picked up
-      </Text>
+      {total > 0 && (
+        <View style={{ gap: 12 }}>
+          <Text style={s.muted} accessibilityLiveRegion="polite">
+            {remaining === 0
+              ? "Everything picked up"
+              : `${remaining} ${remaining === 1 ? "item" : "items"} left to pick up`}
+            {` · ${pickedUp} of ${total}`}
+          </Text>
+          <View
+            accessibilityRole="progressbar"
+            accessibilityLabel="Shopping progress"
+            accessibilityValue={{ min: 0, max: total, now: pickedUp, text: `${pickedUp} of ${total} picked up` }}
+            style={{ height: 6, borderRadius: 3, backgroundColor: colors.line, overflow: "hidden" }}
+          >
+            <View style={{ height: "100%", width: `${(pickedUp / total) * 100}%`, backgroundColor: colors.green }} />
+          </View>
+          <Touch
+            accessibilityRole="switch"
+            accessibilityLabel="Hide picked-up items"
+            accessibilityState={{ checked: hidePickedUp }}
+            onPress={() => setHidePickedUp((value) => !value)}
+            style={[s.row, { minHeight: 48, paddingHorizontal: 12, borderRadius: 14, backgroundColor: hidePickedUp ? colors.selected : colors.white }]}
+          >
+            <Text style={[s.body, { flex: 1 }]}>Hide picked-up items</Text>
+            <Text style={s.muted}>{hidePickedUp ? "On" : "Off"}</Text>
+          </Touch>
+          {hidePickedUp && remaining === 0 && (
+            <View style={[s.card, { gap: 8 }]}>
+              <Text style={s.heading}>You're all set!</Text>
+              <Text style={s.muted}>Everything on your list is picked up. Show items to review them or uncheck anything.</Text>
+              <Button title="Show picked-up items" secondary onPress={() => setHidePickedUp(false)} />
+            </View>
+          )}
+        </View>
+      )}
       {!list?.items.length && (
         <Text style={s.muted}>
           Nothing on this list yet. Add your first item below.
@@ -433,7 +469,7 @@ export function ListDetailScreen() {
       )}
       {categories.map((value) => {
         const entries =
-          list?.items.filter((item) => item.category === value) || [];
+          list?.items.filter((item) => item.category === value && (!hidePickedUp || !item.checked)) || [];
         return entries.length ? (
           <View key={value}>
             <Text style={s.eyebrow}>{value}</Text>

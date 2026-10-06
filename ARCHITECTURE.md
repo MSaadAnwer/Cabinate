@@ -40,9 +40,11 @@ Cabinate combines transactional OLTP capabilities with modern OLAP data warehous
 * **Development Reality:** Windows can be the main coding environment when paired with Expo/EAS cloud builds and a physical iPhone. The iOS Simulator and local native iOS compilation remain macOS/Xcode responsibilities.
 
 ### 2.2 Backend API Layer
-* **Tech:** Java 21+, Spring Boot 3.x
+* **Tech:** Java 21, Spring Boot 4.1.1
 * **Base Package:** `com.cabinate.api`
 * **Pattern:** N-Tier Architecture (`Controller` -> `Service` -> `Repository` / `DAO`) organized by feature slices.
+* **Shared infrastructure:** Central CORS configuration, uniform API error responses, bounded collection pagination, and one reusable HTTP client with response limits and complete request deadlines.
+* **Account access:** OpenID Connect JWT access tokens, server-assigned account ownership, scoped operational queries, and optimistic locking. Configure the issuer/public clients and migrate legacy data before deployment; see [account access](docs/account-access.md).
 * **Role:** Authentication, CRUD operations, raw data ingestion, receipt parsing orchestration, social recipe ingestion adapters, grocery list generation, and client-facing workflows.
 
 ### 2.3 Operational Database (OLTP)
@@ -53,7 +55,7 @@ Cabinate combines transactional OLTP capabilities with modern OLAP data warehous
 * **Tech:** Snowflake
 * **Role:** Normalized, highly structured analytical store for:
   - `DIM_INGREDIENTS` & `DIM_NUTRITION` (Macros, micronutrients)
-  - `FACT_PANTRY_INVENTORY` (Current household stock, expiration dates)
+  - `FACT_PANTRY_INVENTORY` (Current account inventory, expiration dates)
   - `FACT_PRICE_HISTORY` (Store pricing, historical inflation trends)
 
 ### 2.5 ETL & Data Processing Pipeline

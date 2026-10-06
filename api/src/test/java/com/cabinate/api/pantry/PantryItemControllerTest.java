@@ -64,12 +64,13 @@ class PantryItemControllerTest {
                 "FRIDGE",
                 LocalDate.of(2026, 9, 20),
                 Instant.now(),
-                Instant.now());
+                Instant.now(), 0L);
 
         when(pantryItemService.createItem(any(CreatePantryItemRequest.class))).thenReturn(response);
 
         String jsonPayload = """
                 {
+                    "version": 0,
                     "name": "Greek Yogurt",
                     "quantity": 500.0,
                     "unit": "grams",
@@ -93,6 +94,7 @@ class PantryItemControllerTest {
     void createItem_WhenInvalid_ShouldReturn400BadRequest() throws Exception {
         String invalidPayload = """
                 {
+                    "version": 0,
                     "name": "",
                     "quantity": -5.0,
                     "unit": ""
@@ -111,7 +113,7 @@ class PantryItemControllerTest {
     @Test
     void getAllItems_ShouldReturnList() throws Exception {
         PantryItemResponse item = new PantryItemResponse(
-                "pantry-1", "Olive Oil", 1.0, "liter", "PANTRY", "CABINET", null, Instant.now(), Instant.now());
+                "pantry-1", "Olive Oil", 1.0, "liter", "PANTRY", "CABINET", null, Instant.now(), Instant.now(), 0L);
         when(pantryItemService.getAllItems(null, null)).thenReturn(List.of(item));
 
         mockMvc.perform(get("/api/v1/pantry"))
@@ -123,7 +125,7 @@ class PantryItemControllerTest {
     @Test
     void getExpiringItems_ShouldReturnList() throws Exception {
         PantryItemResponse item = new PantryItemResponse(
-                "pantry-1", "Spinach", 1.0, "bag", "PRODUCE", "FRIDGE", LocalDate.of(2026, 9, 8), Instant.now(), Instant.now());
+                "pantry-1", "Spinach", 1.0, "bag", "PRODUCE", "FRIDGE", LocalDate.of(2026, 9, 8), Instant.now(), Instant.now(), 0L);
         when(pantryItemService.getExpiringItems(any())).thenReturn(List.of(item));
 
         mockMvc.perform(get("/api/v1/pantry/expiring?before=2026-09-10"))
@@ -134,7 +136,7 @@ class PantryItemControllerTest {
     @Test
     void getItemById_WhenFound_ShouldReturn200() throws Exception {
         PantryItemResponse item = new PantryItemResponse(
-                "pantry-1", "Olive Oil", 1.0, "liter", "PANTRY", "CABINET", null, Instant.now(), Instant.now());
+                "pantry-1", "Olive Oil", 1.0, "liter", "PANTRY", "CABINET", null, Instant.now(), Instant.now(), 0L);
         when(pantryItemService.getItemById("pantry-1")).thenReturn(item);
 
         mockMvc.perform(get("/api/v1/pantry/pantry-1"))
@@ -156,13 +158,14 @@ class PantryItemControllerTest {
     @Test
     void updateItem_WhenValid_ShouldReturn200() throws Exception {
         PantryItemResponse response = new PantryItemResponse(
-                "pantry-1", "Extra Virgin Olive Oil", 2.0, "liters", "PANTRY", "CABINET", null, Instant.now(), Instant.now());
+                "pantry-1", "Extra Virgin Olive Oil", 2.0, "liters", "PANTRY", "CABINET", null, Instant.now(), Instant.now(), 0L);
 
         when(pantryItemService.updateItem(eq("pantry-1"), any(UpdatePantryItemRequest.class)))
                 .thenReturn(response);
 
         String updatePayload = """
                 {
+                    "version": 0,
                     "name": "Extra Virgin Olive Oil",
                     "quantity": 2.0,
                     "unit": "liters",
@@ -181,18 +184,18 @@ class PantryItemControllerTest {
 
     @Test
     void deleteItem_WhenFound_ShouldReturn204NoContent() throws Exception {
-        doNothing().when(pantryItemService).deleteItem("pantry-1");
+        doNothing().when(pantryItemService).deleteItem("pantry-1", 0L);
 
-        mockMvc.perform(delete("/api/v1/pantry/pantry-1"))
+        mockMvc.perform(delete("/api/v1/pantry/pantry-1").header("If-Match", "\"0\""))
                 .andExpect(status().isNoContent());
     }
 
     @Test
     void deleteItem_WhenNotFound_ShouldReturn404() throws Exception {
         doThrow(new ResourceNotFoundException("PantryItem", "id", "missing"))
-                .when(pantryItemService).deleteItem("missing");
+                .when(pantryItemService).deleteItem("missing", 0L);
 
-        mockMvc.perform(delete("/api/v1/pantry/missing"))
+        mockMvc.perform(delete("/api/v1/pantry/missing").header("If-Match", "\"0\""))
                 .andExpect(status().isNotFound());
     }
 
