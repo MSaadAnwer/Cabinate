@@ -122,7 +122,7 @@ function Navigator() {
                   "new-list": "New list",
                   "add-recipe": "Save a recipe",
                   "capture-link": "Save a link",
-                  receipt: "Receipt photo",
+                  receipt: "Scan a receipt",
                   "import-list": "From your cookbook",
                 } as Record<string, string>
               )[name],

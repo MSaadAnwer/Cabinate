@@ -20,7 +20,7 @@ Sign in to the same Expo account on the PC and in Expo Go. Connect the phone to 
 ## Current experience
 
 - Home: farm silhouettes, notifications/calendar shortcuts, and four illustrated navigation cards.
-- Pantry: illustrated categories, All/search, manual item creation with expiration dates, receipt camera/library capture, and saved product links.
+- Pantry: illustrated categories, All/search, manual item creation with expiration dates, receipt scanning, and saved product links. Scan a receipt photo to review editable food names, quantities, and units before adding selected items. Uncertain amounts stay blank; non-food purchases stay unchecked in a skipped-items section. Confirm an uncertain classification with "This is food" before selecting it. Receipt photos and reviews stay in the local archive, and pending imports resume with the same confirmed items after a failed response.
 - List: multiple named lists, phrase-aware aisle grouping with plural/quantity normalization, remembered category corrections, item checks, and recipe import with optional pantry matching and a review step. Corrections are saved on this device and apply to future additions and imports; existing saved aisles remain unchanged until edited.
 - Cookbook: search, manual recipes, pantry-based AI recipe ideas, video-link capture inbox, ingredients, persistent cooking checklists, and pantry matches from existing recipes. Timed steps offer countdowns for seconds, minutes and hours, including written numbers and compound durations. Ranges use the smaller duration. Multiple timers can run together, persist across navigation/restarts, and remain visible in the timer tray. Native local notifications alert at completion when permitted; otherwise keep the app open for the in-app alert. Countdown updates pause in the background and stop after timers finish.
 - Calendar: month navigation, daily meal photos/captions, and pantry expiration markers.
@@ -33,7 +33,7 @@ Production authentication uses OpenID Connect with PKCE. Configure `EXPO_PUBLIC_
 
 ## Deliberately deferred
 
-Automatic receipt/video extraction, USDA recall feed integration, and remote push notifications remain deferred. Saved links go to the existing raw-ingestion endpoint; they do not silently create recipes or pantry items. The implemented FDA feed does not cover every recall, and a name match is not a confirmed product match. AI recipe generation requires the API's generation provider to be configured.
+Automatic video extraction, USDA recall feed integration, and remote push notifications remain deferred. Saved links go to the existing raw-ingestion endpoint; they do not silently create recipes or pantry items. The implemented FDA feed does not cover every recall, and a name match is not a confirmed product match. AI recipe generation and receipt reading require the API's generation provider to be configured. Receipt extraction uploads a resized JPEG copy; the original stays in your local photo archive, and nothing enters the pantry until you confirm the review.
 
 Pantry-aware list import conservatively matches normalized ingredient names, excludes expired/zero-quantity inventory, and lets the user review the result. It does not convert units, compare amounts, split compound ingredient lines, or infer substitutions. Uncertain matches remain on the shopping list.
 

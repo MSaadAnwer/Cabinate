@@ -6,11 +6,11 @@ An iOS-first kitchen app for pantry inventory, recipes, grocery lists, and meal 
 
 - Pantry categories, quantities, expiration reminders, and search.
 - Manual recipes, pantry-based recipe ideas through Amazon Bedrock, and cooking timers.
-- Named grocery lists, ingredient matching, receipt photos, social-link captures, and a meal-photo calendar.
+- Named grocery lists, ingredient matching, reviewed food-only receipt imports, social-link captures, and a meal-photo calendar.
 - OpenID Connect sign-in, account isolation, and version checks on writes.
 - A cached FDA recall feed.
 
-Grocery lists, photos, receipts, and cooking progress are stored on the device under the verified account. Cross-device sync, receipt extraction, and social recipe extraction are still pending. Snowflake contains warehouse scaffolding; the Databricks pipeline and autonomous agent are planned.
+Grocery lists, photos, and cooking progress are stored on the device under the verified account. Receipt review and import records belong to the account on the API; receipt photos stay local. Cross-device sync and social recipe extraction are still pending. Snowflake contains warehouse scaffolding; the Databricks pipeline and autonomous agent are planned.
 
 See [architecture](ARCHITECTURE.md), [roadmap](ROADMAP.md), [mobile setup](mobile/README.md), and the [latest code review](docs/code-review-2026-10-07.md).
 
@@ -78,8 +78,9 @@ All endpoints use `/api/v1`:
 | `/pantry` | List, create, read, update, delete; `/expiring` and `/page` |
 | `/recipes` | List, create, read, update, delete; `/generate` and `/page` |
 | `/ingest` | List, create, read; `/{id}/status` and `/page` |
+| `/receipts` | Photo/text extraction to review; read draft and confirm selected food purchases |
 | `/recalls` | Public cached FDA notices with freshness metadata |
 | `/auth/config`, `/auth/me` | Authentication readiness and verified identity |
 | `/seed` | Development-only demo seeding |
 
-Updates require the version last read; pantry and recipe deletes require `If-Match`. Errors use one JSON contract with status, message, and optional field validation messages. See [backend configuration](docs/backend-review.md), [account access](docs/account-access.md), [recipe generation](docs/recipe-generation.md), and [recalls](docs/recalls.md) for details.
+Updates require the version last read; pantry and recipe deletes require `If-Match`. Errors use one JSON contract with status, message, and optional field validation messages. See [backend configuration](docs/backend-review.md), [account access](docs/account-access.md), [recipe generation](docs/recipe-generation.md), [receipt extraction](docs/receipt-extraction.md), and [recalls](docs/recalls.md) for details.

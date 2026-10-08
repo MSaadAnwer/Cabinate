@@ -1,6 +1,7 @@
 import { authenticatedJson } from "../../../shared/authenticated-http.ts";
 import type { SeedResponse } from "../types/common";
 import type { IngestPayloadRequest, RawIngestPayload } from "../types/ingest";
+import type { ReceiptConfirmation, ReceiptDraft } from "../types/receipt";
 import type {
   CreatePantryItemRequest,
   PantryItem,
@@ -105,6 +106,16 @@ export const seedApi = {
 
 export const apiConfig = {
   baseUrl: BASE_URL,
+};
+
+export const receiptApi = {
+  extract: (image: { imageBase64: string; mediaType: string }, signal?: AbortSignal) =>
+    request<ReceiptDraft>("/receipts/extract", { method: "POST", body: JSON.stringify(image), signal }, 65000),
+  get: (id: string, signal?: AbortSignal) => request<ReceiptDraft>(`/receipts/${encodeURIComponent(id)}`, { signal }),
+  confirm: (id: string, confirmation: ReceiptConfirmation) =>
+    request<{ receiptId: string; items: PantryItem[] }>(`/receipts/${encodeURIComponent(id)}/confirm`, {
+      method: "POST", body: JSON.stringify(confirmation),
+    }, 30000),
 };
 
 export interface RecallFeed {

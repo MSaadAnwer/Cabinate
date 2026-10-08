@@ -116,7 +116,7 @@ export default function PantryScreen() {
             onPress: () => router.push("/add-pantry"),
           },
           {
-            title: "Photograph a receipt",
+            title: "Scan a receipt",
             icon: "camera",
             onPress: () => router.push("/receipt"),
           },

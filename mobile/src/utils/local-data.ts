@@ -1,4 +1,6 @@
 import type { Category } from "./kitchen";
+import type { ReceiptConfirmation, ReceiptReviewRow } from "../types/receipt";
+import { validReceiptConfirmation, validReceiptReview } from "./receipt-review.ts";
 
 export interface ListItem {
   id: string;
@@ -22,6 +24,10 @@ export interface Receipt {
   id: string;
   uri: string;
   date: string;
+  draftId?: string;
+  review?: ReceiptReviewRow[];
+  pendingConfirmation?: ReceiptConfirmation;
+  imported?: boolean;
 }
 export interface LocalData {
   lists: GroceryList[];
@@ -93,7 +99,11 @@ export function parseLocalData(
     !unique(
       value.receipts,
       (receipt) =>
-        identified(receipt) && text(receipt.date) && text(receipt.uri),
+        identified(receipt) && text(receipt.date) && text(receipt.uri) &&
+        (receipt.draftId === undefined || (text(receipt.draftId) && !!receipt.draftId)) &&
+        (receipt.review === undefined || validReceiptReview(receipt.review)) &&
+        (receipt.pendingConfirmation === undefined || (text(receipt.draftId) && !!receipt.draftId && validReceiptConfirmation(receipt.pendingConfirmation))) &&
+        (receipt.imported === undefined || typeof receipt.imported === "boolean"),
     ) ||
     (value.categoryCorrections !== undefined &&
       (!record(value.categoryCorrections) ||

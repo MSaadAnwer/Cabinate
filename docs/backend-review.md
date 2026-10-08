@@ -74,8 +74,8 @@ data before deciding on a dedicated search index.
 
 Authentication, account isolation, and optimistic locking are now implemented. Configure
 your OIDC provider and explicitly migrate existing records as described in
-[account access](account-access.md). Receipt
-parsing, social extraction, server-owned grocery lists, and a durable ingestion worker
+[account access](account-access.md). [Receipt extraction with reviewed, recoverable imports](receipt-extraction.md)
+is implemented. Social extraction, server-owned grocery lists, and a durable ingestion worker
 are still future workflows. Ingestion status validation does not implement that worker.
 
 Bedrock generation has an instance-local concurrency cap. A per-account or distributed

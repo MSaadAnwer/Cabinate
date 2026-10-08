@@ -20,12 +20,18 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import com.cabinate.api.recipe.RecipeGenerationException;
+import com.cabinate.api.receipt.ReceiptException;
+import com.cabinate.api.receipt.ReceiptUploadFilter;
 import lombok.extern.slf4j.Slf4j;
 
 /** Preserves the client error contract and Spring's HTTP statuses and headers. */
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+    @ExceptionHandler(ReceiptException.class)
+    public ResponseEntity<ErrorResponse> handleReceipt(ReceiptException ex, HttpServletRequest request) {
+        return error(ex.status(), ex.getMessage(), request);
+    }
     @ExceptionHandler(RecipeGenerationException.class)
     public ResponseEntity<ErrorResponse> handleRecipeGeneration(
             RecipeGenerationException ex, HttpServletRequest request) {
@@ -61,6 +67,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
             HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        for (Throwable cause = ex; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ReceiptUploadFilter.LimitExceeded)
+                return new ResponseEntity<>(ErrorResponse.of(413, "Payload Too Large",
+                        "Receipt upload is too large. Resize the photo and try again.", path(request)), headers, HttpStatus.PAYLOAD_TOO_LARGE);
+        }
         return new ResponseEntity<>(ErrorResponse.of(status.value(), reason(status),
                 "Malformed JSON request or invalid data format.", path(request)), headers, status);
     }

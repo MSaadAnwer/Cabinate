@@ -1,12 +1,11 @@
 import { useRef, useState } from "react";
-import { Image, Keyboard, Text, TextInput, View } from "react-native";
+import { Keyboard, Text, TextInput, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import {
   Button,
   ErrorText,
   Field,
   FormPage,
-  Sheet,
   Touch,
   s,
 } from "../components/ui";
@@ -16,13 +15,10 @@ import DateField from "../components/date-field";
 import { stockQuantity } from "../utils/pantry-quantity";
 import { RecipeGenerator } from "../components/recipe-generator";
 import { pantryApi, recipeApi, ingestApi } from "../services/api";
-import { capturePhoto } from "../services/photos";
 import { useKitchen } from "../state/kitchen-store";
 import {
   categories,
   categoryFor,
-  localDate,
-  newId,
   validDate,
 } from "../utils/kitchen";
 
@@ -576,181 +572,6 @@ export function CaptureLinkScreen() {
           else router.push("/add-pantry");
         }}
       />
-    </FormPage>
-  );
-}
-
-export function ReceiptScreen() {
-  const { data, update, ready } = useKitchen();
-  const { notify } = useFeedback();
-  const [uri, setUri] = useState(""),
-    [busy, setBusy] = useState(false),
-    [error, setError] = useState(""),
-    [saved, setSaved] = useState(false);
-  const saving = useRef(false);
-  const draft = useFormDraft(!!uri && !saved, busy);
-  const [replacement, setReplacement] = useState<(() => void) | null>(null);
-  const afterReplacementDismiss = useRef<(() => void) | null>(null);
-  const replacePhoto = (action: () => void) => {
-    if (saving.current) return;
-    if (uri && !saved) setReplacement(() => action);
-    else action();
-  };
-  const pick = async (library: boolean) => {
-    if (saving.current) return;
-    saving.current = true;
-    setBusy(true);
-    setError("");
-    try {
-      const image = await capturePhoto(library);
-      if (image) {
-        setUri(image);
-        setSaved(false);
-      }
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      saving.current = false;
-      setBusy(false);
-    }
-  };
-  const save = async () => {
-    if (saving.current || saved || !uri || !ready) return;
-    saving.current = true;
-    setBusy(true);
-    setError("");
-    try {
-      await update((previous) => ({
-        ...previous,
-        receipts: [
-          { id: newId(), date: localDate(), uri },
-          ...previous.receipts,
-        ],
-      }));
-      setSaved(true);
-      notify("Receipt saved");
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      saving.current = false;
-      setBusy(false);
-    }
-  };
-  return (
-    <FormPage
-      footer={
-        uri ? (
-          <>
-            <ErrorText message={error} />
-            <Button
-              title={saved ? "Receipt saved" : "Save receipt on this device"}
-              pending={busy}
-              disabled={saved || !ready}
-              icon={saved ? "check" : undefined}
-              onPress={() => void save()}
-            />
-          </>
-        ) : undefined
-      }
-    >
-      {draft.guard}
-      <Text style={s.title}>Receipt photo</Text>
-      <Sheet
-        visible={!!replacement}
-        title="Replace this unsaved receipt?"
-        onClose={() => setReplacement(null)}
-        onDismiss={() => {
-          const action = afterReplacementDismiss.current;
-          afterReplacementDismiss.current = null;
-          action?.();
-        }}
-      >
-        <Text style={s.body}>
-          Save your current receipt first if you want to keep it.
-        </Text>
-        <Button
-          title="Keep current receipt"
-          onPress={() => setReplacement(null)}
-        />
-        <Button
-          title="Replace receipt"
-          destructive
-          onPress={() => {
-            afterReplacementDismiss.current = replacement;
-            setReplacement(null);
-          }}
-        />
-      </Sheet>
-      <Text style={s.body}>
-        Photograph a receipt and keep it handy while you add your purchases.
-      </Text>
-      <Button
-        title="Take a receipt photo"
-        icon="camera"
-        disabled={busy}
-        onPress={() => replacePhoto(() => void pick(false))}
-      />
-      <Button
-        title="Choose from photos"
-        secondary
-        disabled={busy}
-        onPress={() => replacePhoto(() => void pick(true))}
-      />
-      {!uri && <ErrorText message={error} />}
-      {!!uri && (
-        <>
-          <Image
-            accessibilityLabel="Receipt preview"
-            source={{ uri }}
-            resizeMode="contain"
-            style={{
-              width: "100%",
-              height: 330,
-              backgroundColor: "#EBEBDF",
-              borderRadius: 16,
-            }}
-          />
-          {saved && (
-            <Text accessibilityLiveRegion="polite" style={s.body}>
-              Your receipt is saved on this device.
-            </Text>
-          )}
-          <Button
-            secondary
-            title="Add a purchased item"
-            disabled={busy}
-            onPress={() => router.push("/add-pantry")}
-          />
-        </>
-      )}
-      <Text style={s.muted}>
-        Automatic receipt reading is coming later. Review the image and add each
-        item manually for now.
-      </Text>
-      {data.receipts.length > 0 && (
-        <Text style={s.heading}>Saved receipts</Text>
-      )}
-      {data.receipts.map((receipt) => (
-        <Touch
-          accessibilityLabel={`Open receipt from ${receipt.date}`}
-          disabled={busy}
-          key={receipt.id}
-          style={[s.card, s.row]}
-          onPress={() =>
-            replacePhoto(() => {
-              setUri(receipt.uri);
-              setSaved(true);
-              setError("");
-            })
-          }
-        >
-          <Image
-            source={{ uri: receipt.uri }}
-            style={{ width: 55, height: 65, borderRadius: 8 }}
-          />
-          <Text style={s.body}>{receipt.date}</Text>
-        </Touch>
-      ))}
     </FormPage>
   );
 }

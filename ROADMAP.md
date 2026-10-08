@@ -33,7 +33,7 @@
 - [x] Build mobile-first navigation for Inventory, Recipes, Grocery List, and Capture
 - [x] Add camera/library receipt photo entry point with local saved receipts
 - [x] Add paste-link entry point and saved capture inbox for social recipe links (native share extension deferred)
-- [ ] Add receipt scanning flow for staging pantry inventory updates
+- [x] Add receipt photo extraction, food-only review, editable amounts, and recoverable confirmed pantry imports
 - [ ] Add social recipe import flow for Instagram Reels, TikTok, and YouTube Shorts links
 - [x] Add recipe-based grocery lists with optional conservative pantry-name matching and review
 - [ ] Extend pantry matching with quantity comparisons and unit conversions
@@ -51,11 +51,12 @@
 - [x] TypeScript checks, recipe/date tests, iOS export, and browser interaction checks
 - [ ] Physical iPhone verification of camera permissions, photo persistence, keyboard, and native transitions
 - [x] Connect pantry-based AI recipe generation, an FDA recall feed, and local cooking timer notifications
-- [ ] Add automatic receipt/video extraction and remote push notifications
+- [x] Add receipt extraction with mixed-goods filtering and confirmation before pantry updates
+- [ ] Add automatic video extraction and remote push notifications
 - [x] Add account authentication, scoped API data, and account-specific local storage
 - [ ] Sync local lists, photos, receipts, and cooking progress between devices
 
-Manual capture flows remain available while extraction is pending. Pantry-based recipe generation is implemented through Amazon Nova Micro; see [generation setup](docs/recipe-generation.md). Account access is implemented; see [identity-provider setup](docs/account-access.md).
+Manual capture flows remain available. Receipt extraction is implemented through Amazon Nova Lite with explicit food/quantity review; see [receipt setup](docs/receipt-extraction.md). Social recipe extraction remains pending. Pantry-based recipe generation is implemented through Amazon Nova Micro; see [generation setup](docs/recipe-generation.md). Account access is implemented; see [identity-provider setup](docs/account-access.md).
 
 ## Milestone 3: Data Lakehouse & ETL Pipeline (Databricks + Python)
 - [x] Set up Snowflake trial account, database, schemas (`RAW`, `STAGING`, `ANALYTICS`), and warehouse
