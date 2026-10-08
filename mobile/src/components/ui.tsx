@@ -29,6 +29,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SafeAreaView as NativeSafeAreaView } from "react-native-screens/experimental";
 import { useHeaderHeight } from "expo-router/react-navigation";
 import { Icon, TomatoMark, type IconName } from "./art";
+import { AppTextInput } from "./text-input";
 import { colors, motion, radius, spacing } from "./tokens";
 import { Touch, selectionFeedback, useFeedback } from "./feedback";
 import { collectionLayout, useContentLayout } from "./content-layout";
@@ -263,7 +264,7 @@ export function Field({
       <Text style={[s.muted, { color: colors.ink, fontWeight: "600" }]}>
         {label}
       </Text>
-      <TextInput
+      <AppTextInput
         accessibilityLabel={label}
         accessibilityHint={error}
         aria-invalid={!!error}
@@ -329,7 +330,7 @@ export function SearchField({
       </Text>
       <View style={[s.input, s.row, { paddingVertical: 0, paddingRight: 2 }]}>
         <Icon name="search" size={20} color={colors.muted} />
-        <TextInput
+        <AppTextInput
           ref={input}
           accessibilityLabel={label}
           value={value}

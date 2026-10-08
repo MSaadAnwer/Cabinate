@@ -1,13 +1,21 @@
 import Svg, { Circle, Ellipse, G, Path, Rect } from "react-native-svg";
+import { Platform } from "react-native";
 
 export type KitchenObject = "notepad" | "jar" | "board" | "pot";
 
 export function KitchenNavigationArt({ object }: { object: KitchenObject }) {
-  return <Svg width={128} height={96} viewBox="0 0 160 120" accessible={false}>
+  return <Svg width={128} height={96} viewBox="0 0 160 120"
+    {...(Platform.OS === "web"
+      ? { "aria-hidden": true }
+      : {
+          accessible: false,
+          accessibilityElementsHidden: true,
+          importantForAccessibility: "no-hide-descendants" as const,
+        })}>
     <Ellipse cx={80} cy={109} rx={49} ry={5} fill="#324A3D" opacity={0.07} />
     <G stroke="#566451" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       {object === "notepad" && <>
-        <G rotation={-6} origin="80,60">
+        <G transform="rotate(-6 80 60)">
           <Rect x={39} y={12} width={76} height={94} rx={9} fill="#FFFEF7" />
           <Path d="M40 32h74" stroke="#DADDD0" />
           {[52, 69, 86].map(y => <G key={y}>
@@ -16,7 +24,7 @@ export function KitchenNavigationArt({ object }: { object: KitchenObject }) {
           </G>)}
           <Path d="M55 8v12M71 8v12M87 8v12M103 8v12M52 51l3 3 6-7" />
         </G>
-        <G rotation={18} origin="124,65">
+        <G transform="rotate(18 124 65)">
           <Rect x={121} y={27} width={9} height={63} rx={2} fill="#D9AC72" />
           <Path d="m121 90 4.5 12 4.5-12" fill="#EEDCC0" />
           <Path d="m124 99 1.5 3 1.5-3M121 36h9" />
@@ -35,7 +43,7 @@ export function KitchenNavigationArt({ object }: { object: KitchenObject }) {
         <Path d="M58 13h44q8 0 8 8v17h16q8 0 8 8v51q0 9-9 9H35q-9 0-9-9V46q0-8 8-8h16V21q0-8 8-8Z" fill="#D9B889" stroke="#9A7B55" />
         <Path d="M72 25h16" stroke="#9A7B55" strokeWidth={6} />
         <Path d="M35 51v42M124 51v42M42 99h69" stroke="#C29E70" />
-        <G rotation={-8} origin="80,70">
+        <G transform="rotate(-8 80 70)">
           <Rect x={44} y={45} width={71} height={51} rx={4} fill="#FFFEF7" stroke="#A1AE90" />
           <Path d="M55 59h32M55 71h49M55 82h39" stroke="#A1AE90" />
           <Circle cx={102} cy={57} r={4} fill="#E6A59A" stroke="none" />

@@ -6,7 +6,7 @@ import {
 import { useFormDraft } from "../components/form-draft";
 import { useContentLayout } from "../components/content-layout";
 import { useRef, useState } from "react";
-import { Image, Text, View } from "react-native";
+import { Image, Keyboard, Text, View } from "react-native";
 import {
   Button,
   ErrorText,
@@ -79,11 +79,12 @@ export default function CalendarScreen() {
     setCaption("");
     notify("Meal photo saved");
   };
-  const retry = async () => {
+  const savePhoto = async () => {
     if (saving.current || !ready || !pendingPhoto) return;
     saving.current = true;
     setBusy(true);
     setError("");
+    Keyboard.dismiss();
     try {
       await persistPhoto({
         ...pendingPhoto,
@@ -113,7 +114,6 @@ export default function CalendarScreen() {
           caption: caption.trim() || "Meal photo",
         };
         setPendingPhoto(photo);
-        await persistPhoto(photo);
       }
     } catch (e) {
       setError((e as Error).message);
@@ -148,7 +148,15 @@ export default function CalendarScreen() {
     }
   };
   return (
-    <FormPage>
+    <FormPage footer={pendingPhoto ? <>
+      <ErrorText message={error} />
+      <Button
+        title="Save photo and note"
+        pending={busy}
+        disabled={!ready}
+        onPress={() => void savePhoto()}
+      />
+    </> : undefined}>
       {draft.guard}
       <Sheet
         visible={!!confirmPhoto}
@@ -365,14 +373,8 @@ export default function CalendarScreen() {
                 style={{ width: "100%", aspectRatio: 1, borderRadius: 22 }}
               />
               <Text style={s.body}>
-                This photo is still waiting to be saved.
+                Add an optional note, then tap Save photo and note.
               </Text>
-              <Button
-                title="Save meal photo"
-                pending={busy}
-                disabled={!ready}
-                onPress={() => void retry()}
-              />
             </>
           )}
           {!pendingPhoto && selected === today && (
@@ -393,7 +395,7 @@ export default function CalendarScreen() {
           )}
         </>
       )}
-      <ErrorText message={error} />
+      {!pendingPhoto && <ErrorText message={error} />}
     </FormPage>
   );
 }
