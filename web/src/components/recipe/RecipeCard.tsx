@@ -1,11 +1,12 @@
 import React from 'react';
 import type { Recipe } from '../../types/recipe';
 import { Clock, Users, ExternalLink, BookOpen, Trash2 } from 'lucide-react';
+import { usePendingAction } from '../../hooks/usePendingAction';
 
 interface RecipeCardProps {
   recipe: Recipe;
   onViewDetails: (recipe: Recipe) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => Promise<void>;
 }
 
 export const RecipeCard: React.FC<RecipeCardProps> = ({
@@ -13,6 +14,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
   onViewDetails,
   onDelete,
 }) => {
+  const { pending, run } = usePendingAction();
   const totalMinutes = (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
 
   return (
@@ -73,7 +75,9 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({
           <button
             className="btn btn-ghost btn-sm"
             style={{ color: 'var(--text-muted)' }}
-            onClick={() => onDelete(recipe.id)}
+            onClick={() => void run(() => onDelete(recipe.id))}
+            disabled={pending}
+            aria-label={`Delete ${recipe.title}`}
             title="Delete recipe"
           >
             <Trash2 size={13} />

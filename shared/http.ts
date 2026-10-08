@@ -6,7 +6,7 @@ export interface ApiErrorResponse {
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object";
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 /** A deadline covers response headers and the body. Mutations are never retried. */
@@ -25,9 +25,10 @@ export async function requestJson<T>(
   options.signal?.addEventListener("abort", cancel, { once: true });
   if (options.signal?.aborted) controller.abort();
   try {
+    if (controller.signal.aborted) throw new Error("Request cancelled");
     const headers = new Headers(options.headers);
     if (!headers.has("Accept")) headers.set("Accept", "application/json");
-    if (!headers.has("Content-Type"))
+    if (typeof options.body === "string" && !headers.has("Content-Type"))
       headers.set("Content-Type", "application/json");
     const response = await fetch(url, {
       ...options,
@@ -68,14 +69,17 @@ export async function requestJson<T>(
       throw error;
     const mutation =
       options.method && !["GET", "HEAD"].includes(options.method.toUpperCase());
+    const cancelled = !timedOut && controller.signal.aborted;
     throw {
       status: 0,
-      error: timedOut ? "Timeout" : "Network Error",
+      error: timedOut ? "Timeout" : cancelled ? "Cancelled" : "Network Error",
       message: mutation
         ? "Could not confirm your change. Check the saved content before trying again."
         : timedOut
           ? "Cabinate took too long to respond. Please try again."
-          : "Could not connect to Cabinate. Check your connection and try again.",
+          : cancelled
+            ? "Request cancelled."
+            : "Could not connect to Cabinate. Check your connection and try again.",
     } satisfies ApiErrorResponse;
   } finally {
     clearTimeout(timer);

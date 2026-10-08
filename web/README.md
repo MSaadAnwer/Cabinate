@@ -1,32 +1,22 @@
-# React + TypeScript + Vite
+# Cabinate Web
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React and TypeScript client for pantry inventory, saved recipes, pantry-based recipe generation, and imported recipe content.
 
-Currently, two official plugins are available:
+From this directory:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```sh
+npm ci
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Vite serves the app on port 5173 and proxies `/api` to the backend at `http://localhost:8080`. Start the API separately. Production hosting must route `/api` to the backend.
+
+Authentication uses the API's `/api/v1/auth/config` mode. For OIDC, configure `VITE_AUTH_ISSUER` and `VITE_AUTH_CLIENT_ID` in `.env.local`; optional settings are `VITE_AUTH_AUDIENCE` and `VITE_AUTH_SCOPES`. Register the app's origin with a `/` redirect URI. Access tokens stay in memory, and redirect state uses session storage.
+
+```sh
+npm run build
+npm run lint
+npm test
+```
+
+The regression tests use Node 22's built-in TypeScript support and test runner. API requests share the HTTP and credential helpers in `../shared`. Ordinary requests have a 15-second deadline; recipe generation has a 65-second deadline and cancels when its dialog closes. Pantry expiration warnings derive from loaded inventory, including expired records and dates within seven local calendar days.

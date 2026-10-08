@@ -1,12 +1,14 @@
 import React from 'react';
 import type { PantryItem } from '../../types/pantry';
 import { MapPin, Plus, Minus, Trash2, Edit2, AlertTriangle, CheckCircle } from 'lucide-react';
+import { daysUntilExpiration } from '../../utils/pantry';
+import { usePendingAction } from '../../hooks/usePendingAction';
 
 interface PantryItemCardProps {
   item: PantryItem;
   onEdit: (item: PantryItem) => void;
-  onDelete: (id: string) => void;
-  onQuickQuantityChange: (id: string, newQuantity: number) => void;
+  onDelete: (id: string) => Promise<void>;
+  onQuickQuantityChange: (id: string, newQuantity: number) => Promise<void>;
 }
 
 export const PantryItemCard: React.FC<PantryItemCardProps> = ({
@@ -15,14 +17,12 @@ export const PantryItemCard: React.FC<PantryItemCardProps> = ({
   onDelete,
   onQuickQuantityChange,
 }) => {
+  const { pending, run } = usePendingAction();
   // Expiry calculation
   const getExpiryInfo = (dateStr?: string | null) => {
     if (!dateStr) return null;
-    const expDate = new Date(dateStr + 'T00:00:00');
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const diffDays = Math.ceil((expDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const diffDays = daysUntilExpiration(dateStr);
+    if (diffDays === null) return null;
 
     if (diffDays < 0) {
       return {
@@ -109,8 +109,9 @@ export const PantryItemCard: React.FC<PantryItemCardProps> = ({
           <button
             className="btn btn-ghost btn-sm"
             style={{ padding: '4px 8px', borderRadius: '4px' }}
-            onClick={() => onQuickQuantityChange(item.id, Math.max(0, item.quantity - 1))}
-            disabled={item.quantity <= 0}
+            onClick={() => void run(() => onQuickQuantityChange(item.id, Math.max(0, item.quantity - 1)))}
+            disabled={pending || item.quantity <= 0}
+            aria-label={`Decrease ${item.name} quantity`}
             title="Decrease quantity by 1"
           >
             <Minus size={13} />
@@ -121,7 +122,9 @@ export const PantryItemCard: React.FC<PantryItemCardProps> = ({
           <button
             className="btn btn-ghost btn-sm"
             style={{ padding: '4px 8px', borderRadius: '4px' }}
-            onClick={() => onQuickQuantityChange(item.id, item.quantity + 1)}
+            onClick={() => void run(() => onQuickQuantityChange(item.id, item.quantity + 1))}
+            disabled={pending}
+            aria-label={`Increase ${item.name} quantity`}
             title="Increase quantity by 1"
           >
             <Plus size={13} />
@@ -134,6 +137,7 @@ export const PantryItemCard: React.FC<PantryItemCardProps> = ({
         <button
           className="btn btn-ghost btn-sm"
           onClick={() => onEdit(item)}
+          disabled={pending}
           title="Edit item details"
         >
           <Edit2 size={13} />
@@ -141,7 +145,8 @@ export const PantryItemCard: React.FC<PantryItemCardProps> = ({
         </button>
         <button
           className="btn btn-danger btn-sm"
-          onClick={() => onDelete(item.id)}
+          onClick={() => void run(() => onDelete(item.id))}
+          disabled={pending}
           title="Remove from pantry"
         >
           <Trash2 size={13} />

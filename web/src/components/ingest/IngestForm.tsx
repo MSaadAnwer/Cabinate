@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { IngestPayloadRequest } from '../../types/ingest';
 import { UploadCloud, Clipboard, Globe, Code, Sparkles } from 'lucide-react';
+import { getErrorMessage } from '../../utils/errors';
 
 interface IngestFormProps {
   onIngest: (payload: IngestPayloadRequest) => Promise<void>;
@@ -89,8 +90,8 @@ export const IngestForm: React.FC<IngestFormProps> = ({ onIngest }) => {
       });
       setPayload('');
       setSourceUrl('');
-    } catch (err: any) {
-      setErrorMessage(err?.message || 'Failed to ingest payload');
+    } catch (err: unknown) {
+      setErrorMessage(getErrorMessage(err, 'Could not import recipe content'));
     } finally {
       setIsSubmitting(false);
     }
@@ -100,9 +101,9 @@ export const IngestForm: React.FC<IngestFormProps> = ({ onIngest }) => {
     <div className="glass-card" style={{ padding: '24px', textAlign: 'left' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
         <div>
-          <h3 style={{ fontSize: '18px', fontWeight: 700 }}>Ingest Raw Culinary Data</h3>
+          <h3 style={{ fontSize: '18px', fontWeight: 700 }}>Import Recipe Content</h3>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-            Submit unstructured text, web dumps, or external recipe JSON into the operational lakehouse staging queue.
+            Paste content to save it in your import queue.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '6px' }}>
@@ -110,6 +111,7 @@ export const IngestForm: React.FC<IngestFormProps> = ({ onIngest }) => {
             type="button"
             className="btn btn-ghost btn-sm"
             onClick={() => loadSample('clipboard')}
+            disabled={isSubmitting}
             title="Load sample clipboard note"
           >
             <Sparkles size={12} color="var(--color-emerald)" />
@@ -119,6 +121,7 @@ export const IngestForm: React.FC<IngestFormProps> = ({ onIngest }) => {
             type="button"
             className="btn btn-ghost btn-sm"
             onClick={() => loadSample('json')}
+            disabled={isSubmitting}
             title="Load sample API JSON"
           >
             <Code size={12} color="var(--color-indigo)" />
@@ -134,6 +137,7 @@ export const IngestForm: React.FC<IngestFormProps> = ({ onIngest }) => {
       )}
 
       <form onSubmit={handleSubmit}>
+        <fieldset disabled={isSubmitting}>
         {/* Source selector buttons */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '16px' }}>
           <button
@@ -152,7 +156,7 @@ export const IngestForm: React.FC<IngestFormProps> = ({ onIngest }) => {
             onClick={() => handleSourceChange('WEB_SCRAPE')}
           >
             <Globe size={14} />
-            <span>Web Scrape</span>
+            <span>HTML</span>
           </button>
           <button
             type="button"
@@ -167,9 +171,10 @@ export const IngestForm: React.FC<IngestFormProps> = ({ onIngest }) => {
 
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px' }}>
           <div className="form-group">
-            <label className="form-label">Source URL (Optional)</label>
+            <label className="form-label" htmlFor="import-url">Source URL (Optional)</label>
             <input
               type="url"
+              id="import-url"
               className="input-field"
               placeholder="https://example.com/recipe..."
               value={sourceUrl}
@@ -178,8 +183,9 @@ export const IngestForm: React.FC<IngestFormProps> = ({ onIngest }) => {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Content Type</label>
+            <label className="form-label" htmlFor="import-type">Content Type</label>
             <select
+              id="import-type"
               className="select-field"
               value={contentType}
               onChange={(e) => setContentType(e.target.value)}
@@ -192,8 +198,9 @@ export const IngestForm: React.FC<IngestFormProps> = ({ onIngest }) => {
         </div>
 
         <div className="form-group">
-          <label className="form-label">Raw Payload Content *</label>
+          <label className="form-label" htmlFor="import-content">Recipe Content *</label>
           <textarea
+            id="import-content"
             className="textarea-field"
             style={{ minHeight: '160px', fontFamily: 'var(--font-mono)', fontSize: '13px' }}
             placeholder="Paste raw recipe text, HTML snippet, or structured JSON payload here..."
@@ -205,9 +212,10 @@ export const IngestForm: React.FC<IngestFormProps> = ({ onIngest }) => {
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '14px' }}>
           <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
             <UploadCloud size={16} />
-            <span>{isSubmitting ? 'Ingesting...' : 'Ingest Payload'}</span>
+            <span>{isSubmitting ? 'Importing...' : 'Import Content'}</span>
           </button>
         </div>
+        </fieldset>
       </form>
     </div>
   );

@@ -20,53 +20,56 @@ export const Navbar: React.FC<NavbarProps> = ({
     <header className="app-header">
       <div className="container nav-container">
         {/* Brand */}
-        <div className="brand" onClick={() => setActiveTab('pantry')}>
+        <button className="brand" onClick={() => setActiveTab('pantry')} aria-label="Cabinate pantry">
           <div className="brand-icon">
             <ChefHat size={22} />
           </div>
           <div>
             <div className="brand-title">Cabinate</div>
-            <div className="brand-subtitle">Pantry & Nutrition Architect</div>
+            <div className="brand-subtitle">Pantry & Recipes</div>
           </div>
-        </div>
+        </button>
 
         {/* Center Tabs */}
         <nav className="nav-tabs" aria-label="Main Navigation">
           <button
             className={`nav-tab-btn ${activeTab === 'pantry' ? 'active' : ''}`}
             onClick={() => setActiveTab('pantry')}
+            aria-current={activeTab === 'pantry' ? 'page' : undefined}
           >
-            Pantry Inventory
+            Pantry
           </button>
           <button
             className={`nav-tab-btn ${activeTab === 'recipes' ? 'active' : ''}`}
             onClick={() => setActiveTab('recipes')}
+            aria-current={activeTab === 'recipes' ? 'page' : undefined}
           >
             Recipes
           </button>
           <button
             className={`nav-tab-btn ${activeTab === 'ingest' ? 'active' : ''}`}
             onClick={() => setActiveTab('ingest')}
+            aria-current={activeTab === 'ingest' ? 'page' : undefined}
           >
-            Raw Ingestion
+            Import
           </button>
         </nav>
 
         {/* Right Actions */}
         <div className="nav-actions">
-          <div className="status-indicator" title={isOnline ? 'Connected to Spring Boot API' : 'API Connection Failed'}>
+          <div className="status-indicator" title={isOnline ? 'Connected to Cabinate' : 'Could not connect to Cabinate'}>
             <div className={`status-dot ${isOnline ? '' : 'offline'}`} />
-            <span>{isOnline ? 'API Online' : 'API Offline'}</span>
+            <span>{isOnline ? 'Connected' : 'Offline'}</span>
           </div>
 
           <button
             className="btn btn-secondary btn-sm"
             onClick={onSeedData}
             disabled={isSeeding}
-            title="Populate MongoDB with default recipes and pantry items"
+            title="Add sample recipes and pantry items"
           >
             <Database size={14} />
-            <span>{isSeeding ? 'Seeding...' : 'Seed Data'}</span>
+            <span>{isSeeding ? 'Adding...' : 'Sample Data'}</span>
           </button>
         </div>
       </div>

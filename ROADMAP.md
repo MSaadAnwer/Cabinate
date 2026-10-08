@@ -50,10 +50,12 @@
 - [x] Persist lists, photos, and cooking progress on the device
 - [x] TypeScript checks, recipe/date tests, iOS export, and browser interaction checks
 - [ ] Physical iPhone verification of camera permissions, photo persistence, keyboard, and native transitions
-- [ ] Connect AI recipe generation, automatic receipt/video extraction, product recall feed, and push notifications
-- [ ] Add account authentication and sync locally stored records between devices
+- [x] Connect pantry-based AI recipe generation, an FDA recall feed, and local cooking timer notifications
+- [ ] Add automatic receipt/video extraction and remote push notifications
+- [x] Add account authentication, scoped API data, and account-specific local storage
+- [ ] Sync local lists, photos, receipts, and cooking progress between devices
 
-The manual flows are implemented first by product decision. AI and automatic extraction remain visibly marked as upcoming; the inspiration screen currently suggests existing saved recipes with pantry matches.
+Manual capture flows remain available while extraction is pending. Pantry-based recipe generation is implemented through Amazon Nova Micro; see [generation setup](docs/recipe-generation.md). Account access is implemented; see [identity-provider setup](docs/account-access.md).
 
 ## Milestone 3: Data Lakehouse & ETL Pipeline (Databricks + Python)
 - [x] Set up Snowflake trial account, database, schemas (`RAW`, `STAGING`, `ANALYTICS`), and warehouse
@@ -67,7 +69,7 @@ The manual flows are implemented first by product decision. AI and automatic ext
   - Write idempotent MERGE/UPSERT into Snowflake
 
 ## Milestone 4: Autonomous Agent Integration (Amazon Bedrock)
-- [ ] Configure AWS Bedrock foundation model access (e.g. Anthropic Claude 3.5 Sonnet)
+- [x] Implement pantry-based recipe generation through Amazon Bedrock Nova Micro (credentials and provider access required)
 - [ ] Define Bedrock Agent Action Groups:
   - Lambda or API tools for Text-to-SQL execution against Snowflake
   - Semantic context retrieval tool for recipe notes from MongoDB
@@ -77,7 +79,8 @@ The manual flows are implemented first by product decision. AI and automatic ext
 
 ## Milestone 5: Production Readiness & Deployment (Cabinate.com)
 - [ ] Containerize applications with multi-stage Dockerfiles
-- [ ] Setup CI/CD pipelines (GitHub Actions)
+- [x] Add GitHub Actions checks for backend, real MongoDB account isolation, clients, and shared utilities
+- [ ] Add deployment pipelines
 - [ ] Deploy frontend (Vercel / Cloudflare Pages / AWS Amplify)
 - [ ] Deploy Spring Boot backend (AWS ECS / App Runner)
 - [ ] Domain setup, SSL, and security hardening for Cabinate.com

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { RawIngestPayload } from '../../types/ingest';
 import { CheckCircle2, Clock, XCircle, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { usePendingAction } from '../../hooks/usePendingAction';
 
 interface IngestPayloadListProps {
   payloads: RawIngestPayload[];
@@ -14,6 +15,7 @@ export const IngestPayloadList: React.FC<IngestPayloadListProps> = ({
   isLoading,
 }) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const { pending, run } = usePendingAction();
 
   const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
@@ -50,9 +52,9 @@ export const IngestPayloadList: React.FC<IngestPayloadListProps> = ({
     <div className="glass-card" style={{ padding: '24px', textAlign: 'left' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
         <div>
-          <h3 style={{ fontSize: '18px', fontWeight: 700 }}>Ingestion Queue & Audit Log</h3>
+          <h3 style={{ fontSize: '18px', fontWeight: 700 }}>Import Queue</h3>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-            Unprocessed payloads staged for Databricks PySpark extraction and Snowflake loading.
+            Review imported content and track its processing status.
           </p>
         </div>
         <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
@@ -115,6 +117,8 @@ export const IngestPayloadList: React.FC<IngestPayloadListProps> = ({
                     </span>
                     <button
                       className="btn btn-ghost btn-sm"
+                      aria-label={isExpanded ? 'Collapse imported content' : 'Expand imported content'}
+                      aria-expanded={isExpanded}
                       style={{ padding: '4px' }}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -138,7 +142,8 @@ export const IngestPayloadList: React.FC<IngestPayloadListProps> = ({
                           <button
                             className="btn btn-secondary btn-sm"
                             style={{ fontSize: '11px', padding: '3px 8px' }}
-                            onClick={() => onUpdateStatus(item.id, 'PROCESSED')}
+                            onClick={() => void run(() => onUpdateStatus(item.id, 'PROCESSED'))}
+                            disabled={pending}
                           >
                             Mark as Processed
                           </button>
@@ -147,7 +152,8 @@ export const IngestPayloadList: React.FC<IngestPayloadListProps> = ({
                           <button
                             className="btn btn-secondary btn-sm"
                             style={{ fontSize: '11px', padding: '3px 8px' }}
-                            onClick={() => onUpdateStatus(item.id, 'PENDING')}
+                            onClick={() => void run(() => onUpdateStatus(item.id, 'PENDING'))}
+                            disabled={pending}
                           >
                             Reset to Pending
                           </button>

@@ -32,22 +32,29 @@ function useTimerStore() {
   const [error, setError] = useState("");
   const working = useRef(false);
   const announced = useRef(new Set<string>());
+  const running = timers.some((timer) => timer.endsAt > now);
   useEffect(() => {
     void configureTimerNotifications().catch(() => {});
   }, []);
   useEffect(() => {
     if (!timers.length) return;
     const tick = () => setNow(Date.now());
-    tick();
-    const interval = setInterval(tick, 1000);
-    const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") tick();
-    });
+    let interval: ReturnType<typeof setInterval> | undefined;
+    const sync = (state: string | null) => {
+      clearInterval(interval);
+      interval = undefined;
+      if (state === "active" || state === null) {
+        tick();
+        if (running) interval = setInterval(tick, 1000);
+      }
+    };
+    sync(AppState.currentState);
+    const subscription = AppState.addEventListener("change", sync);
     return () => {
       clearInterval(interval);
       subscription.remove();
     };
-  }, [timers.length]);
+  }, [timers.length, running]);
   useEffect(() => {
     if (AppState.currentState !== "active" && AppState.currentState !== null)
       return;

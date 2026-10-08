@@ -29,6 +29,11 @@
   gap: 12px;
   cursor: pointer;
   text-decoration: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
 }
 
 .brand-icon {
@@ -288,6 +293,11 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
+  .nav-container {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
   .nav-tabs {
     order: 3;
     width: 100%;
@@ -304,4 +314,12 @@
     flex-direction: column;
     align-items: flex-start;
   }
+}
+
+@media (max-width: 420px) {
+  .nav-actions { gap: 6px; }
+  .status-indicator { padding: 6px; }
+  .nav-tab-btn { padding: 8px 12px; }
+  .card-grid { grid-template-columns: minmax(0, 1fr); }
+  .search-box { min-width: 0; width: 100%; }
 }

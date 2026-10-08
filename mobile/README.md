@@ -19,19 +19,21 @@ Sign in to the same Expo account on the PC and in Expo Go. Connect the phone to 
 
 ## Current experience
 
-- Home: quiet farm silhouettes, notifications/calendar shortcuts, and four uneven tomato sections.
+- Home: farm silhouettes, notifications/calendar shortcuts, and four illustrated navigation cards.
 - Pantry: illustrated categories, All/search, manual item creation with expiration dates, receipt camera/library capture, and saved product links.
 - List: multiple named lists, phrase-aware aisle grouping with plural/quantity normalization, remembered category corrections, item checks, and recipe import with optional pantry matching and a review step. Corrections are saved on this device and apply to future additions and imports; existing saved aisles remain unchanged until edited.
-- Cookbook: search, manual recipes, video-link capture inbox, ingredients, persistent cooking checklists, and pantry matches from existing recipes. Timed steps offer countdowns for seconds, minutes and hours, including written numbers and compound durations. Ranges use the smaller duration. Multiple timers can run together, persist across navigation/restarts, and remain visible in the timer tray. Native local notifications alert at completion when permitted; otherwise keep the app open for the in-app alert.
+- Cookbook: search, manual recipes, pantry-based AI recipe ideas, video-link capture inbox, ingredients, persistent cooking checklists, and pantry matches from existing recipes. Timed steps offer countdowns for seconds, minutes and hours, including written numbers and compound durations. Ranges use the smaller duration. Multiple timers can run together, persist across navigation/restarts, and remain visible in the timer tray. Native local notifications alert at completion when permitted; otherwise keep the app open for the in-app alert. Countdown updates pause in the background and stop after timers finish.
 - Calendar: month navigation, daily meal photos/captions, and pantry expiration markers.
 - Notifications: expired items, the next seven days of expirations, and U.S. FDA recall notices with conservative potential pantry matches and visible source freshness.
-- Account: placeholder profile and capture inbox.
+- Account: signed-in account details, sign-out, and capture inbox.
 
-Pantry and recipe data use the Spring Boot API. Lists, meal photos, receipt photos, and cooking progress persist locally on the device. Photos are copied to the app's document directory, not left in the temporary picker cache. These local records do not sync between devices.
+Pantry and recipe data use the Spring Boot API. Lists, meal photos, receipt photos, and cooking progress persist locally for each account. Native photos are copied to the app's document directory; browser previews save image data instead of temporary blob URLs. Browser storage quotas can limit large photo collections. These local records do not sync between devices.
+
+Production authentication uses OpenID Connect with PKCE. Configure `EXPO_PUBLIC_AUTH_ISSUER`, `EXPO_PUBLIC_AUTH_CLIENT_ID`, and the matching API authentication settings; `EXPO_PUBLIC_AUTH_AUDIENCE` and `EXPO_PUBLIC_AUTH_SCOPES` are optional. Native credentials use SecureStore, while browser credentials stay in memory. Development authentication is controlled by the API.
 
 ## Deliberately deferred
 
-AI generation, automatic receipt/video extraction, USDA recall feed integration, push notifications, and account authentication remain deferred. Saved links go to the existing raw-ingestion endpoint; they do not silently create recipes or pantry items. The implemented FDA feed does not cover every recall, and a name match is not a confirmed product match.
+Automatic receipt/video extraction, USDA recall feed integration, and remote push notifications remain deferred. Saved links go to the existing raw-ingestion endpoint; they do not silently create recipes or pantry items. The implemented FDA feed does not cover every recall, and a name match is not a confirmed product match. AI recipe generation requires the API's generation provider to be configured.
 
 Pantry-aware list import conservatively matches normalized ingredient names, excludes expired/zero-quantity inventory, and lets the user review the result. It does not convert units, compare amounts, split compound ingredient lines, or infer substitutions. Uncertain matches remain on the shopping list.
 

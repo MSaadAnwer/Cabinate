@@ -118,6 +118,30 @@ class BedrockRecipeIdeaProviderTest {
         assertEquals(2, calls.get());
     }
 
+    @Test void keepsValidRecipesWhenBatchContainsNullRecipeOrIngredient() {
+        var invalidIngredients = new RecipeIdeaProvider.Idea("Incomplete dish", "A pantry meal",
+                java.util.Arrays.asList((RecipeIdeaProvider.Ingredient) null),
+                List.of("Cook the eggs."), 5, 10, 2);
+        for (var invalid : java.util.Arrays.asList(null, invalidIngredients)) {
+            var calls = new java.util.concurrent.atomic.AtomicInteger();
+            var provider = new BedrockRecipeIdeaProvider(mapper, "test-token", "us-east-1", "test", (u, t, b) -> {
+                var batch = calls.getAndIncrement() == 0
+                        ? java.util.Arrays.asList(invalid, RecipeGenerationServiceTest.idea("Poached eggs", "item1", 2),
+                                RecipeGenerationServiceTest.idea("Boiled eggs", "item1", 2))
+                        : List.of(RecipeGenerationServiceTest.idea("Scrambled eggs", "item1", 2));
+                var response = Map.of("stopReason", "tool_use", "output", Map.of("message", Map.of("content", List.of(
+                        Map.of("toolUse", Map.of("name", "suggest_recipes", "input", Map.of("recipes", batch)))))));
+                return new BedrockRecipeIdeaProvider.Reply(200, mapper.writeValueAsString(response));
+            });
+            var stock = List.of(new RecipeIdeaProvider.Stock("egg", "Eggs", 6, "pcs", ""));
+            var result = provider.generate(stock, List.of());
+            assertEquals(2, calls.get());
+            assertEquals(List.of("Poached eggs", "Boiled eggs", "Scrambled eggs"),
+                    result.stream().map(RecipeIdeaProvider.Idea::title).toList());
+            assertEquals(3, RecipeGenerationService.validate(result, stock, List.of()).size());
+        }
+    }
+
     @Test void missingConfigurationNeverMakesRequest() {
         var provider = new BedrockRecipeIdeaProvider(mapper, "", "us-east-1", "test", (u, t, b) -> { fail("Network called"); return null; });
         assertEquals(RecipeGenerationException.Reason.UNAVAILABLE,

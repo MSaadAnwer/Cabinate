@@ -24,6 +24,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -180,6 +181,33 @@ class PantryItemControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Extra Virgin Olive Oil"))
                 .andExpect(jsonPath("$.quantity").value(2.0));
+    }
+
+    @Test
+    void updateItem_WhenDepleted_ShouldAcceptZeroQuantity() throws Exception {
+        var response = new PantryItemResponse(
+                "pantry-1", "Rice", 0.0, "kg", "GRAINS", "CABINET", null, Instant.now(), Instant.now(), 1L);
+        when(pantryItemService.updateItem(eq("pantry-1"), any(UpdatePantryItemRequest.class))).thenReturn(response);
+
+        mockMvc.perform(put("/api/v1/pantry/pantry-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Rice","quantity":0,"unit":"kg","version":0}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.quantity").value(0.0));
+    }
+
+    @Test
+    void updateItem_WhenQuantityNegative_ShouldRejectBeforeSaving() throws Exception {
+        mockMvc.perform(put("/api/v1/pantry/pantry-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Rice","quantity":-1,"unit":"kg","version":0}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.quantity").value("Quantity cannot be negative"));
+        verifyNoInteractions(pantryItemService);
     }
 
     @Test

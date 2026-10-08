@@ -24,23 +24,35 @@ public class RecallService {
     private final Fetcher fetcher;
     private final Clock clock;
     private Feed cached = new Feed(List.of(), null, null, true);
+    private boolean refreshing;
 
     @Autowired
     public RecallService(ExternalHttpClient client) { this(() -> download(client), Clock.systemUTC()); }
     RecallService(Fetcher fetcher, Clock clock) { this.fetcher = fetcher; this.clock = clock; }
 
     // Demand-driven cache: at most one upstream request per 15 minutes across clients.
-    public synchronized Feed get() {
+    public Feed get() {
         Instant now = clock.instant();
-        if (cached.lastAttempt() != null && now.isBefore(cached.lastAttempt().plusSeconds(900))) return cached;
+        Feed previous;
+        synchronized (this) {
+            if (refreshing || cached.lastAttempt() != null && now.isBefore(cached.lastAttempt().plusSeconds(900))) return cached;
+            previous = cached;
+            refreshing = true;
+            cached = new Feed(previous.items(), previous.lastSuccessfulCheck(), now, true);
+        }
+        Feed refreshed;
         try {
-            cached = new Feed(parse(fetcher.fetch()), now, now, false);
+            refreshed = new Feed(parse(fetcher.fetch()), clock.instant(), now, false);
         } catch (Exception e) {
             log.warn("Could not refresh FDA recall notices: {}", e.toString());
             if (e instanceof InterruptedException) Thread.currentThread().interrupt();
-            cached = new Feed(cached.items(), cached.lastSuccessfulCheck(), now, true);
+            refreshed = new Feed(previous.items(), previous.lastSuccessfulCheck(), now, true);
         }
-        return cached;
+        synchronized (this) {
+            cached = refreshed;
+            refreshing = false;
+            return cached;
+        }
     }
 
     private static byte[] download(ExternalHttpClient client) throws Exception {

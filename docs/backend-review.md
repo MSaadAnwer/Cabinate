@@ -82,6 +82,11 @@ Bedrock generation has an instance-local concurrency cap. A per-account or distr
 rate limit is still open. Recall caching is also instance-local. Inventory expiration
 uses the server's current date; account timezone handling remains open.
 
+The October 7, 2026 review lets concurrent recall readers use the cached feed while one
+request refreshes FDA data. It also reuses pantry token patterns per generation request
+and rejects malformed individual ideas without discarding otherwise usable results.
+See [the full code review](code-review-2026-10-07.md) for client fixes and follow-up work.
+
 ## Validation
 
 Run `mvn test` (or `.\mvnw.cmd test`) in `api`. Regression tests cover API status codes,

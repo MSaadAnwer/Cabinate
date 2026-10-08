@@ -26,10 +26,11 @@ public class RecipeGenerationService {
         if (!slots.tryAcquire()) throw new RecipeGenerationException(BUSY,
                 "Recipe generation is busy. Please try again in a moment.");
         try {
+            LocalDate today = LocalDate.now();
             var pantry = pantryRepository.findByOwnerId(account.id()).stream()
                     .filter(item -> item.getId() != null && item.getName() != null && !item.getName().isBlank())
                     .filter(item -> item.getQuantity() != null && Double.isFinite(item.getQuantity()) && item.getQuantity() > 0)
-                    .filter(item -> item.getExpirationDate() == null || !item.getExpirationDate().isBefore(LocalDate.now()))
+                    .filter(item -> item.getExpirationDate() == null || !item.getExpirationDate().isBefore(today))
                     .sorted(Comparator.comparing(PantryItem::getExpirationDate, Comparator.nullsLast(Comparator.naturalOrder())))
                     .limit(100)
                     .map(item -> new RecipeIdeaProvider.Stock(item.getId(), item.getName(), item.getQuantity(),

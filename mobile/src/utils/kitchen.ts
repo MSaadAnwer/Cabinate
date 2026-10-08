@@ -19,6 +19,14 @@ export const categoryColors = [
   "#C8C0A4",
   "#D7D9C8",
 ];
+const categoryAliases: Record<string, Category> = {
+  PRODUCE: "Produce",
+  DAIRY: "Dairy",
+  FROZEN: "Frozen",
+  MEAT: "Meat & fish",
+  GRAINS: "Bread & grains",
+  PANTRY: "Cupboard",
+};
 
 export function categoryFor(
   name: string,
@@ -27,16 +35,8 @@ export function categoryFor(
   corrections?: Record<string, Category>,
 ): Category {
   if (location?.toUpperCase() === "FREEZER") return "Frozen";
-  const aliases: Record<string, Category> = {
-    PRODUCE: "Produce",
-    DAIRY: "Dairy",
-    FROZEN: "Frozen",
-    MEAT: "Meat & fish",
-    GRAINS: "Bread & grains",
-    PANTRY: "Cupboard",
-  };
-  if (category && aliases[category.toUpperCase()])
-    return aliases[category.toUpperCase()];
+  if (category && categoryAliases[category.toUpperCase()])
+    return categoryAliases[category.toUpperCase()];
   if (category && categories.includes(category as Category))
     return category as Category;
   const key = groceryKey(name);
@@ -46,16 +46,10 @@ export function categoryFor(
     return "Frozen";
   // Match whole words and prefer specific products over their ingredients:
   // peanut butter, orange juice and coconut milk are not dairy or produce.
-  const matches = foodVocabulary.filter(({ phrase }) =>
+  const match = foodVocabulary.find(({ phrase }) =>
     text.includes(` ${phrase} `),
   );
-  matches.sort(
-    (a, b) =>
-      b.phrase.split(" ").length - a.phrase.split(" ").length ||
-      b.priority - a.priority,
-  );
-  if (matches.length) return matches[0].category;
-  return "Other";
+  return match?.category ?? "Other";
 }
 
 export function suggestedPantryCategory(item: Pick<PantryItem, "name" | "category" | "location">, corrections?: Record<string, Category>): Category | null {
@@ -89,7 +83,7 @@ export function groceryKey(name: string): string {
     .filter(Boolean)
     .map(
       (word) =>
-        singulars[word] ||
+        (Object.hasOwn(singulars, word) ? singulars[word] : undefined) ||
         (word.endsWith("ies")
           ? `${word.slice(0, -3)}y`
           : /(ches|shes|xes|zes)$/.test(word)
@@ -139,11 +133,15 @@ const foodGroups: [Category, number, string][] = [
     "can opener|paper towel|toilet paper|dish soap|hand soap|laundry detergent|trash bag|cat food|dog food|apple cider soap",
   ],
 ];
-const foodVocabulary = foodGroups.flatMap(([category, priority, words]) =>
-  words
-    .split("|")
-    .map((word) => ({ category, priority, phrase: groceryKey(word) })),
-);
+// Product precedence is fixed; calculate it once instead of sorting every lookup.
+const foodVocabulary = foodGroups
+  .flatMap(([category, priority, words]) =>
+    words.split("|").map((word) => {
+      const phrase = groceryKey(word);
+      return { category, priority, phrase, words: phrase.split(" ").length };
+    }),
+  )
+  .sort((a, b) => b.words - a.words || b.priority - a.priority);
 
 export function parseRecipe(raw: string): {
   ingredients: string[];
@@ -195,18 +193,15 @@ export function ingredientName(line: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
-export function inPantry(line: string, pantry: PantryItem[]): boolean {
-  const name = ingredientName(line);
-  const today = localDate();
-  return (
-    !!name &&
-    pantry.some(
-      (item) =>
-        item.quantity > 0 &&
-        (!item.expirationDate || item.expirationDate >= today) &&
-        ingredientName(item.name) === name,
-    )
+/** Normalize usable inventory once when matching a recipe or an entire cookbook. */
+export function createPantryMatcher(pantry: readonly PantryItem[], today = localDate()) {
+  const names = new Set(
+    pantry
+      .filter((item) => item.quantity > 0 && (!item.expirationDate || item.expirationDate >= today))
+      .map((item) => ingredientName(item.name))
+      .filter(Boolean),
   );
+  return (line: string): boolean => names.has(ingredientName(line));
 }
 export function localDate(date = new Date()): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;

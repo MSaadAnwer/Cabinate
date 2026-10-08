@@ -12,6 +12,7 @@ interface PantryDashboardProps {
   onUpdateItem: (id: string, item: UpdatePantryItemRequest) => Promise<void>;
   onDeleteItem: (id: string) => Promise<void>;
   onSeedSampleData: () => void;
+  isSeeding: boolean;
   isLoading: boolean;
 }
 
@@ -22,6 +23,7 @@ const CATEGORIES = [
   { id: 'MEAT', label: 'Meat & Seafood' },
   { id: 'GRAINS', label: 'Grains & Pasta' },
   { id: 'PANTRY', label: 'Pantry Staples' },
+  { id: 'OTHER', label: 'Other' },
 ];
 
 export const PantryDashboard: React.FC<PantryDashboardProps> = ({
@@ -31,6 +33,7 @@ export const PantryDashboard: React.FC<PantryDashboardProps> = ({
   onUpdateItem,
   onDeleteItem,
   onSeedSampleData,
+  isSeeding,
   isLoading,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,14 +43,15 @@ export const PantryDashboard: React.FC<PantryDashboardProps> = ({
 
   // Filter items by category and search
   const filteredItems = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
     return items.filter((item) => {
       const matchesCategory =
         selectedCategory === 'ALL' ||
         item.category?.toUpperCase() === selectedCategory;
       const matchesSearch =
-        !searchQuery.trim() ||
-        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.location?.toLowerCase().includes(searchQuery.toLowerCase());
+        !query ||
+        item.name.toLowerCase().includes(query) ||
+        item.location?.toLowerCase().includes(query);
       return matchesCategory && matchesSearch;
     });
   }, [items, selectedCategory, searchQuery]);
@@ -92,9 +96,9 @@ export const PantryDashboard: React.FC<PantryDashboardProps> = ({
       {/* View Header */}
       <div className="view-header">
         <div className="view-header-content text-left">
-          <h1>Pantry & Stock Inventory</h1>
+          <h1>Your Pantry</h1>
           <p>
-            Real-time operational inventory tracking stock levels, storage zones, and shelf-life urgency.
+            Track what you have, where it is stored, and what needs using soon.
           </p>
         </div>
         <div className="view-header-actions">
@@ -110,6 +114,7 @@ export const PantryDashboard: React.FC<PantryDashboardProps> = ({
         items={expiringItems}
         onSelectItem={(item) => {
           setSearchQuery(item.name);
+          setSelectedCategory('ALL');
         }}
       />
 
@@ -119,6 +124,7 @@ export const PantryDashboard: React.FC<PantryDashboardProps> = ({
           <Search size={16} className="search-icon" />
           <input
             type="text"
+            aria-label="Search pantry by ingredient or location"
             className="input-field search-input"
             placeholder="Search pantry by ingredient or location..."
             value={searchQuery}
@@ -132,6 +138,7 @@ export const PantryDashboard: React.FC<PantryDashboardProps> = ({
               key={cat.id}
               className={`category-pill ${selectedCategory === cat.id ? 'active' : ''}`}
               onClick={() => setSelectedCategory(cat.id)}
+              aria-pressed={selectedCategory === cat.id}
             >
               {cat.label}
             </button>
@@ -164,7 +171,7 @@ export const PantryDashboard: React.FC<PantryDashboardProps> = ({
           <p>
             {searchQuery || selectedCategory !== 'ALL'
               ? 'Try adjusting your search criteria or clearing selected category filters.'
-              : 'Your pantry is currently empty. Seed default culinary items or add items manually.'}
+              : 'Add your first ingredient or try the sample pantry.'}
           </p>
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
             {searchQuery || selectedCategory !== 'ALL' ? (
@@ -183,9 +190,9 @@ export const PantryDashboard: React.FC<PantryDashboardProps> = ({
                   <Plus size={15} />
                   <span>Add First Item</span>
                 </button>
-                <button className="btn btn-secondary" onClick={onSeedSampleData}>
+                <button className="btn btn-secondary" onClick={onSeedSampleData} disabled={isSeeding}>
                   <Sparkles size={15} />
-                  <span>Populate Demo Stock</span>
+                  <span>Try Sample Data</span>
                 </button>
               </>
             )}

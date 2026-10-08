@@ -46,6 +46,11 @@ test("product phrases and shelf-stable forms outrank ingredient words", () => {
   assert.equal(categoryFor("Butterfly clips"), "Other");
   assert.equal(categoryFor("Unrecognized item"), "Other");
 });
+
+test("normalization treats inherited object property names as ordinary words", () => {
+  assert.equal(groceryKey("constructor"), "constructor");
+  assert.equal(categoryFor("constructor"), "Other");
+});
 test("saved corrections survive reload and explicit categories still win", () => {
   const categoryCorrections = {
     [groceryKey("Oranges")]: "Other",

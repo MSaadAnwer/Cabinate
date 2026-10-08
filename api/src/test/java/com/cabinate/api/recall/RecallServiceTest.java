@@ -3,7 +3,12 @@ package com.cabinate.api.recall;
 import org.junit.jupiter.api.Test;
 import java.nio.charset.StandardCharsets;
 import java.time.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.jupiter.api.Assertions.*;
 
 class RecallServiceTest {
@@ -47,5 +52,44 @@ class RecallServiceTest {
         var service = new RecallService(() -> { throw new Exception(); }, Clock.systemUTC());
         assertTrue(service.get().stale());
         assertNull(service.get().lastSuccessfulCheck());
+    }
+
+    @Test void servesLastGoodNoticesWhileOneCallerRefreshes() throws Exception {
+        var now = new AtomicReference<>(Instant.parse("2026-09-17T12:00:00Z"));
+        var clock = new Clock() {
+            public ZoneId getZone() { return ZoneOffset.UTC; }
+            public Clock withZone(ZoneId zone) { return this; }
+            public Instant instant() { return now.get(); }
+        };
+        var calls = new AtomicInteger();
+        var started = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        var service = new RecallService(() -> {
+            if (calls.incrementAndGet() > 1) {
+                started.countDown();
+                if (!release.await(5, TimeUnit.SECONDS)) throw new IllegalStateException("Refresh test timed out");
+            }
+            return xml(LINK);
+        }, clock);
+        var good = service.get();
+        now.updateAndGet(value -> value.plusSeconds(901));
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var refreshing = executor.submit(service::get);
+            try {
+                assertTrue(started.await(5, TimeUnit.SECONDS));
+                var stale = executor.submit(service::get).get(2, TimeUnit.SECONDS);
+                assertTrue(stale.stale());
+                assertEquals(good.items(), stale.items());
+                assertEquals(good.lastSuccessfulCheck(), stale.lastSuccessfulCheck());
+                assertEquals(now.get(), stale.lastAttempt());
+                assertEquals(2, calls.get());
+            } finally {
+                release.countDown();
+            }
+            var fresh = refreshing.get(5, TimeUnit.SECONDS);
+            assertFalse(fresh.stale());
+            assertSame(fresh, service.get());
+            assertEquals(2, calls.get());
+        }
     }
 }

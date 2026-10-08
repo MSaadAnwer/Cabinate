@@ -3,6 +3,7 @@ import {
   use,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -63,8 +64,9 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
       ).catch(() => {});
     timer.current = setTimeout(() => setMessage(""), 3500);
   }, []);
+  const feedback = useMemo(() => ({ reduceMotion, notify }), [reduceMotion, notify]);
   return (
-    <FeedbackContext value={{ reduceMotion, notify }}>
+    <FeedbackContext value={feedback}>
       {children}
       {!!message && (
         <View

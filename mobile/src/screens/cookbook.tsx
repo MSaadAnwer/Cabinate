@@ -3,7 +3,7 @@ import { StepTimers } from "../components/cooking-timers";
 import { RecipeGenerator } from "../components/recipe-generator";
 import { recipeApi } from "../services/api";
 import { Touch as Pressable, useFeedback } from "../components/feedback";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { RefreshControl, Switch, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { FoodShape, Icon } from "../components/art";
@@ -27,7 +27,8 @@ import {
 } from "../components/ui";
 import { useKitchen } from "../state/kitchen-store";
 import {
-  inPantry,
+  createPantryMatcher,
+  localDate,
   newId,
   parseRecipe,
   categoryFor,
@@ -340,9 +341,14 @@ export function ImportListScreen() {
     [error, setError] = useState("");
   const [excluded, setExcluded] = useState<string[]>([]);
   const recipe = recipes.find((item) => item.id === selected);
-  const ingredients = recipe ? parseRecipe(recipe.rawText).ingredients : [];
+  const ingredients = useMemo(
+    () => recipe ? parseRecipe(recipe.rawText).ingredients : [],
+    [recipe?.rawText],
+  );
+  const today = localDate();
+  const inPantry = useMemo(() => createPantryMatcher(pantry, today), [pantry, today]);
   const available = ingredients.filter(
-    (line) => usePantry && inPantry(line, pantry),
+    (line) => usePantry && inPantry(line),
   );
   const included = ingredients.filter(
     (line) => !available.includes(line) && !excluded.includes(line),
@@ -546,15 +552,18 @@ export function ImportListScreen() {
 }
 export function InspirationScreen() {
   const { pantry, recipes, loaded, loading, error, reload, upsertRecipe } = useKitchen();
-  const matches = recipes
-    .map((recipe) => ({
-      recipe,
-      count: parseRecipe(recipe.rawText).ingredients.filter((line) =>
-        inPantry(line, pantry),
-      ).length,
-    }))
-    .filter((item) => item.count > 0)
-    .sort((a, b) => b.count - a.count);
+  const today = localDate();
+  const inPantry = useMemo(() => createPantryMatcher(pantry, today), [pantry, today]);
+  const matches = useMemo(() =>
+    recipes
+      .map((recipe) => ({
+        recipe,
+        count: parseRecipe(recipe.rawText).ingredients.filter(inPantry).length,
+      }))
+      .filter((item) => item.count > 0)
+      .sort((a, b) => b.count - a.count),
+    [recipes, inPantry],
+  );
   return (
     <Page>
       <RecipeGenerator

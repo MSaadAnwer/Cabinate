@@ -10,6 +10,7 @@ interface RecipeDashboardProps {
   onAddRecipe: (recipe: CreateRecipeRequest) => Promise<void>;
   onDeleteRecipe: (id: string) => Promise<void>;
   onSeedSampleData: () => void;
+  isSeeding: boolean;
   isLoading: boolean;
 }
 
@@ -18,6 +19,7 @@ export const RecipeDashboard: React.FC<RecipeDashboardProps> = ({
   onAddRecipe,
   onDeleteRecipe,
   onSeedSampleData,
+  isSeeding,
   isLoading,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -27,7 +29,7 @@ export const RecipeDashboard: React.FC<RecipeDashboardProps> = ({
 
   const filteredRecipes = useMemo(() => {
     if (!searchQuery.trim()) return recipes;
-    const q = searchQuery.toLowerCase();
+    const q = searchQuery.trim().toLowerCase();
     return recipes.filter(
       (r) =>
         r.title.toLowerCase().includes(q) ||
@@ -46,9 +48,9 @@ export const RecipeDashboard: React.FC<RecipeDashboardProps> = ({
       {/* View Header */}
       <div className="view-header">
         <div className="view-header-content text-left">
-          <h1>Recipe Architect & Library</h1>
+          <h1>Your Recipes</h1>
           <p>
-            Structured recipes ready for autonomous nutritional enrichment and pantry matching.
+            Save favorite recipes or get ideas using ingredients in your pantry.
           </p>
         </div>
         <div className="view-header-actions">
@@ -65,6 +67,7 @@ export const RecipeDashboard: React.FC<RecipeDashboardProps> = ({
           <Search size={16} className="search-icon" />
           <input
             type="text"
+            aria-label="Search recipes by title, ingredients, or keywords"
             className="input-field search-input"
             placeholder="Search recipes by title, ingredients, or keywords..."
             value={searchQuery}
@@ -100,7 +103,7 @@ export const RecipeDashboard: React.FC<RecipeDashboardProps> = ({
           <p>
             {searchQuery
               ? `No recipes found matching "${searchQuery}". Clear your search or create a new recipe.`
-              : 'Your recipe repository is currently empty. Add your favorite meal or populate sample recipes.'}
+              : 'Save your favorite meal or try the sample recipes.'}
           </p>
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
             {searchQuery ? (
@@ -113,9 +116,9 @@ export const RecipeDashboard: React.FC<RecipeDashboardProps> = ({
                   <Plus size={15} />
                   <span>Create Recipe</span>
                 </button>
-                <button className="btn btn-secondary" onClick={onSeedSampleData}>
+                <button className="btn btn-secondary" onClick={onSeedSampleData} disabled={isSeeding}>
                   <Sparkles size={15} />
-                  <span>Populate Demo Recipes</span>
+                  <span>Try Sample Data</span>
                 </button>
               </>
             )}

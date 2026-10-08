@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import type { CreateRecipeRequest } from '../../types/recipe';
 import { X, Plus } from 'lucide-react';
 import { RecipeGenerator } from './RecipeGenerator';
+import { Modal } from '../common/Modal';
+import { getErrorMessage } from '../../utils/errors';
 
 interface RecipeCreateModalProps {
   isOpen: boolean;
@@ -9,8 +11,7 @@ interface RecipeCreateModalProps {
   onSubmit: (recipe: CreateRecipeRequest) => Promise<void>;
 }
 
-export const RecipeCreateModal: React.FC<RecipeCreateModalProps> = ({
-  isOpen,
+const RecipeCreateForm: React.FC<Omit<RecipeCreateModalProps, 'isOpen'>> = ({
   onClose,
   onSubmit,
 }) => {
@@ -23,8 +24,6 @@ export const RecipeCreateModal: React.FC<RecipeCreateModalProps> = ({
   const [servings, setServings] = useState<number | ''>(4);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-
-  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,19 +49,18 @@ export const RecipeCreateModal: React.FC<RecipeCreateModalProps> = ({
         servings: servings === '' ? undefined : Number(servings),
       });
       onClose();
-    } catch (err: any) {
-      setErrorMessage(err?.message || 'Failed to create recipe');
+    } catch (err: unknown) {
+      setErrorMessage(getErrorMessage(err, 'Failed to create recipe'));
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" style={{ maxWidth: '640px' }} onClick={(e) => e.stopPropagation()}>
+      <Modal label="Add recipe" onClose={onClose} busy={isSubmitting} maxWidth="640px">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
           <h2 style={{ fontSize: '20px', fontWeight: 700 }}>Add New Recipe</h2>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}>
+          <button className="btn btn-ghost btn-sm" onClick={onClose} disabled={isSubmitting} aria-label="Close recipe form">
             <X size={18} />
           </button>
         </div>
@@ -85,10 +83,12 @@ export const RecipeCreateModal: React.FC<RecipeCreateModalProps> = ({
             setErrorMessage('');
           }} />
         <form onSubmit={handleSubmit}>
+          <fieldset disabled={isSubmitting}>
           <div className="form-group">
-            <label className="form-label">Recipe Title *</label>
+            <label className="form-label" htmlFor="recipe-title">Recipe Title *</label>
             <input
               type="text"
+              id="recipe-title"
               className="input-field"
               placeholder="e.g. Tuscan White Bean & Kale Stew"
               value={title}
@@ -99,9 +99,10 @@ export const RecipeCreateModal: React.FC<RecipeCreateModalProps> = ({
           </div>
 
           <div className="form-group">
-            <label className="form-label">Summary / Short Description</label>
+            <label className="form-label" htmlFor="recipe-description">Short Description</label>
             <input
               type="text"
+              id="recipe-description"
               className="input-field"
               placeholder="e.g. Hearty comforting stew rich in plant protein and herbs"
               value={description}
@@ -110,9 +111,10 @@ export const RecipeCreateModal: React.FC<RecipeCreateModalProps> = ({
           </div>
 
           <div className="form-group">
-            <label className="form-label">Source URL (Optional)</label>
+            <label className="form-label" htmlFor="recipe-url">Source URL (Optional)</label>
             <input
               type="url"
+              id="recipe-url"
               className="input-field"
               placeholder="https://cooking.nytimes.com/recipes/..."
               value={sourceUrl}
@@ -122,9 +124,10 @@ export const RecipeCreateModal: React.FC<RecipeCreateModalProps> = ({
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
             <div className="form-group">
-              <label className="form-label">Prep (mins)</label>
+              <label className="form-label" htmlFor="recipe-prep">Prep (mins)</label>
               <input
                 type="number"
+                id="recipe-prep"
                 min="0"
                 className="input-field"
                 value={prepTimeMinutes}
@@ -132,9 +135,10 @@ export const RecipeCreateModal: React.FC<RecipeCreateModalProps> = ({
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Cook (mins)</label>
+              <label className="form-label" htmlFor="recipe-cook">Cook (mins)</label>
               <input
                 type="number"
+                id="recipe-cook"
                 min="0"
                 className="input-field"
                 value={cookTimeMinutes}
@@ -142,9 +146,10 @@ export const RecipeCreateModal: React.FC<RecipeCreateModalProps> = ({
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Servings</label>
+              <label className="form-label" htmlFor="recipe-servings">Servings</label>
               <input
                 type="number"
+                id="recipe-servings"
                 min="1"
                 className="input-field"
                 value={servings}
@@ -154,8 +159,9 @@ export const RecipeCreateModal: React.FC<RecipeCreateModalProps> = ({
           </div>
 
           <div className="form-group">
-            <label className="form-label">Raw Ingredients & Cooking Steps *</label>
+            <label className="form-label" htmlFor="recipe-instructions">Ingredients & Cooking Steps *</label>
             <textarea
+              id="recipe-instructions"
               className="textarea-field"
               style={{ minHeight: '140px', fontFamily: 'var(--font-mono)', fontSize: '13px' }}
               placeholder={`Ingredients:\n- 2 cans cannellini beans\n- 1 bunch lacinato kale\n\nInstructions:\n1. Sauté aromatics in olive oil...`}
@@ -173,8 +179,12 @@ export const RecipeCreateModal: React.FC<RecipeCreateModalProps> = ({
               <span>{isSubmitting ? 'Submitting...' : 'Save Recipe'}</span>
             </button>
           </div>
+          </fieldset>
         </form>
-      </div>
-    </div>
+      </Modal>
   );
+};
+
+export const RecipeCreateModal: React.FC<RecipeCreateModalProps> = ({ isOpen, onClose, onSubmit }) => {
+  return isOpen ? <RecipeCreateForm onClose={onClose} onSubmit={onSubmit} /> : null;
 };

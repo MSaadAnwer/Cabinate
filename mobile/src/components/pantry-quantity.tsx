@@ -6,13 +6,12 @@ import { pantryApi } from "../services/api";
 import type { PantryItem } from "../types/pantry";
 import { adjustUsage, remainingStock, restockedQuantity, stockQuantity, usageStep } from "../utils/pantry-quantity";
 
-export function PantryQuantity({ item, mode, onModeChange, onBusyChange }: {
+export function PantryQuantity({ item, mode, onClose, onBusyChange }: {
   item: PantryItem;
-  mode: "use" | "add" | null;
-  onModeChange: (mode: "use" | "add" | null) => void;
+  mode: "use" | "add";
+  onClose: () => void;
   onBusyChange: (busy: boolean) => void;
 }) {
-  const open = mode !== null;
   const adding = mode === "add";
   const [amount, setAmount] = useState("1");
   const [busy, setBusy] = useState(false);
@@ -57,18 +56,16 @@ export function PantryQuantity({ item, mode, onModeChange, onBusyChange }: {
         upsertPantryItem(updated);
       }
       if (mounted.current) {
-        onModeChange(null);
+        onClose();
         setAmount(String(Math.min(1, remaining || stock.quantity)));
       }
     } catch (e) { if (mounted.current) setError((e as Error).message); }
     finally { saving.current = false; onBusyChange(false); if (mounted.current) setBusy(false); }
   };
-  if (!open) return null;
   return <View style={{ gap: 10 }}>
-    <Touch style={s.chip} disabled={busy} accessibilityLabel="Cancel adjustment" onPress={() => { onModeChange(null); setError(""); }}>
+    <Touch style={s.chip} disabled={busy} accessibilityLabel="Cancel adjustment" onPress={onClose}>
       <Text style={s.body}>Cancel adjustment</Text>
     </Touch>
-    {open && <>
       <Text style={s.body}>Amount {adding ? "to add" : "used"} ({stock.unit})</Text>
       <View style={[s.row, { justifyContent: "center" }]}>
         <Touch style={[s.chip, { minWidth: 52, alignItems: "center" }]} accessibilityLabel={`Decrease amount ${adding ? "to add" : "used"} by ${step} ${stock.unit}`} disabled={busy || used <= step} onPress={() => setAmount(String(adjustUsage(used, -1, step, adding ? Infinity : stock.quantity)))}><Text style={[s.heading, { fontSize: 24 }]}>−</Text></Touch>
@@ -79,6 +76,5 @@ export function PantryQuantity({ item, mode, onModeChange, onBusyChange }: {
       <Text style={s.muted}>{!valid ? "Choose a valid positive amount." : remaining === 0 ? "This removes the item and its expiration reminder." : adding ? `${stock.quantity} + ${used} = ${remaining} ${stock.unit}` : `${remaining} ${stock.unit} will remain.`}</Text>
       <ErrorText message={error} />
       <Button title="Confirm" disabled={!valid} pending={busy} onPress={() => void save()} />
-    </>}
   </View>;
 }

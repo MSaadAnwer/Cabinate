@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import type { PantryItem, CreatePantryItemRequest, UpdatePantryItemRequest } from '../../types/pantry';
 import { X, Save, Plus } from 'lucide-react';
+import { Modal } from '../common/Modal';
+import { getErrorMessage } from '../../utils/errors';
 
 interface PantryItemModalProps {
   isOpen: boolean;
@@ -31,8 +33,8 @@ const PantryItemForm: React.FC<PantryItemFormProps> = ({ initialItem, onClose, o
       setErrorMessage('Item name is required');
       return;
     }
-    if (quantity === '' || quantity <= 0) {
-      setErrorMessage('Quantity must be greater than zero');
+    if (quantity === '' || !Number.isFinite(quantity) || quantity < 0 || (!initialItem && quantity === 0)) {
+      setErrorMessage(initialItem ? 'Quantity must be zero or greater' : 'Quantity must be greater than zero');
       return;
     }
     if (!unit.trim()) {
@@ -55,20 +57,20 @@ const PantryItemForm: React.FC<PantryItemFormProps> = ({ initialItem, onClose, o
 
       await onSubmit(payload, initialItem?.id);
       onClose();
-    } catch (err: any) {
-      setErrorMessage(err?.message || 'Failed to save pantry item');
+    } catch (err: unknown) {
+      setErrorMessage(getErrorMessage(err, 'Failed to save pantry item'));
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+    <Modal label={initialItem ? 'Edit pantry item' : 'Add pantry item'} onClose={onClose} busy={isSubmitting}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
         <h2 style={{ fontSize: '20px', fontWeight: 700 }}>
           {initialItem ? 'Edit Pantry Item' : 'Add New Pantry Item'}
         </h2>
-        <button className="btn btn-ghost btn-sm" onClick={onClose}>
+        <button className="btn btn-ghost btn-sm" onClick={onClose} disabled={isSubmitting} aria-label="Close pantry item form">
           <X size={18} />
         </button>
       </div>
@@ -80,10 +82,12 @@ const PantryItemForm: React.FC<PantryItemFormProps> = ({ initialItem, onClose, o
       )}
 
       <form onSubmit={handleSubmit}>
+        <fieldset disabled={isSubmitting}>
         <div className="form-group">
-          <label className="form-label">Item Name *</label>
+          <label className="form-label" htmlFor="pantry-name">Item Name *</label>
           <input
             type="text"
+            id="pantry-name"
             className="input-field"
             placeholder="e.g. Organic Rolled Oats"
             value={name}
@@ -95,11 +99,12 @@ const PantryItemForm: React.FC<PantryItemFormProps> = ({ initialItem, onClose, o
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
           <div className="form-group">
-            <label className="form-label">Quantity *</label>
+            <label className="form-label" htmlFor="pantry-quantity">Quantity *</label>
             <input
               type="number"
-              step="0.1"
-              min="0.01"
+              id="pantry-quantity"
+              step="any"
+              min={initialItem ? '0' : '0.01'}
               className="input-field"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value === '' ? '' : parseFloat(e.target.value))}
@@ -107,9 +112,10 @@ const PantryItemForm: React.FC<PantryItemFormProps> = ({ initialItem, onClose, o
           </div>
 
           <div className="form-group">
-            <label className="form-label">Unit *</label>
+            <label className="form-label" htmlFor="pantry-unit">Unit *</label>
             <input
               type="text"
+              id="pantry-unit"
               className="input-field"
               placeholder="e.g. g, ml, pcs, bag"
               value={unit}
@@ -120,8 +126,9 @@ const PantryItemForm: React.FC<PantryItemFormProps> = ({ initialItem, onClose, o
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
           <div className="form-group">
-            <label className="form-label">Category</label>
+            <label className="form-label" htmlFor="pantry-category">Category</label>
             <select
+              id="pantry-category"
               className="select-field"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
@@ -136,8 +143,9 @@ const PantryItemForm: React.FC<PantryItemFormProps> = ({ initialItem, onClose, o
           </div>
 
           <div className="form-group">
-            <label className="form-label">Storage Location</label>
+            <label className="form-label" htmlFor="pantry-location">Storage Location</label>
             <select
+              id="pantry-location"
               className="select-field"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
@@ -151,9 +159,10 @@ const PantryItemForm: React.FC<PantryItemFormProps> = ({ initialItem, onClose, o
         </div>
 
         <div className="form-group">
-          <label className="form-label">Expiration Date (Optional)</label>
+          <label className="form-label" htmlFor="pantry-expiration">Expiration Date (Optional)</label>
           <input
             type="date"
+            id="pantry-expiration"
             className="input-field"
             value={expirationDate}
             onChange={(e) => setExpirationDate(e.target.value)}
@@ -169,8 +178,9 @@ const PantryItemForm: React.FC<PantryItemFormProps> = ({ initialItem, onClose, o
             <span>{isSubmitting ? 'Saving...' : initialItem ? 'Update Item' : 'Add Item'}</span>
           </button>
         </div>
+        </fieldset>
       </form>
-    </div>
+    </Modal>
   );
 };
 
@@ -183,13 +193,11 @@ export const PantryItemModal: React.FC<PantryItemModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
       <PantryItemForm
         key={initialItem?.id ?? 'new'}
         initialItem={initialItem}
         onClose={onClose}
         onSubmit={onSubmit}
       />
-    </div>
   );
 };

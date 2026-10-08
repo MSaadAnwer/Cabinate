@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import './App.css';
 import { Navbar } from './components/navigation/Navbar';
 import { PantryDashboard } from './components/pantry/PantryDashboard';
@@ -9,6 +9,9 @@ import type { PantryItem, CreatePantryItemRequest, UpdatePantryItemRequest } fro
 import type { Recipe, CreateRecipeRequest } from './types/recipe';
 import type { RawIngestPayload, IngestPayloadRequest } from './types/ingest';
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
+import { getExpiringItems } from './utils/pantry';
+import { getErrorMessage } from './utils/errors';
+import { loadSnapshot } from './utils/loadSnapshot';
 
 interface Toast {
   id: string;
@@ -19,103 +22,84 @@ interface Toast {
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'pantry' | 'recipes' | 'ingest'>('pantry');
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
-  const [expiringItems, setExpiringItems] = useState<PantryItem[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [ingestPayloads, setIngestPayloads] = useState<RawIngestPayload[]>([]);
   const [isOnline, setIsOnline] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isSeeding, setIsSeeding] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const loadController = useRef<AbortController | null>(null);
+  const seeding = useRef(false);
+  const dataRevision = useRef(0);
+  const toastTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const expiringItems = getExpiringItems(pantryItems);
 
   const addToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
-    const id = Math.random().toString(36).substring(2, 9);
+    const id = crypto.randomUUID();
     setToasts((prev) => [...prev, { id, type, message }]);
-    setTimeout(() => {
+    toastTimers.current.set(id, setTimeout(() => {
+      toastTimers.current.delete(id);
       setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
+    }, 4000));
   }, []);
 
   const removeToast = useCallback((id: string) => {
+    clearTimeout(toastTimers.current.get(id));
+    toastTimers.current.delete(id);
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  // Load all initial data
-  const loadAllData = useCallback(async (withLoadingState = false) => {
+  const loadAllData = useCallback(async () => {
+    loadController.current?.abort();
+    const controller = new AbortController();
+    loadController.current = controller;
     try {
-      if (withLoadingState) {
-        setIsLoading(true);
-      }
-      const [pantryRes, expiringRes, recipesRes, ingestRes] = await Promise.all([
-        pantryApi.getAll(),
-        pantryApi.getExpiring(),
-        recipeApi.getAll(),
-        ingestApi.getAll(),
-      ]);
-
-      setPantryItems(pantryRes);
-      setExpiringItems(expiringRes);
-      setRecipes(recipesRes);
-      setIngestPayloads(ingestRes);
-      setIsOnline(true);
-    } catch (err: any) {
+      await loadSnapshot(() => Promise.all([
+        pantryApi.getAll(undefined, undefined, controller.signal),
+        recipeApi.getAll(undefined, controller.signal),
+        ingestApi.getAll(undefined, undefined, controller.signal),
+      ]), () => dataRevision.current, controller.signal, ([pantryRes, recipesRes, ingestRes]) => {
+        setPantryItems(pantryRes);
+        setRecipes(recipesRes);
+        setIngestPayloads(ingestRes);
+        setIsOnline(true);
+      });
+    } catch (err: unknown) {
+      if (controller.signal.aborted) return;
       setIsOnline(false);
-      addToast(err?.message || 'Failed to connect to Cabinate API', 'error');
+      addToast(getErrorMessage(err, 'Failed to connect to Cabinate'), 'error');
     } finally {
-      setIsLoading(false);
+      if (!controller.signal.aborted) setIsLoading(false);
     }
   }, [addToast]);
 
   useEffect(() => {
-    let ignore = false;
-
-    const fetchInitialData = async () => {
-      try {
-        const [pantryRes, expiringRes, recipesRes, ingestRes] = await Promise.all([
-          pantryApi.getAll(),
-          pantryApi.getExpiring(),
-          recipeApi.getAll(),
-          ingestApi.getAll(),
-        ]);
-
-        if (!ignore) {
-          setPantryItems(pantryRes);
-          setExpiringItems(expiringRes);
-          setRecipes(recipesRes);
-          setIngestPayloads(ingestRes);
-          setIsOnline(true);
-        }
-      } catch (err: any) {
-        if (!ignore) {
-          setIsOnline(false);
-          addToast(err?.message || 'Failed to connect to Cabinate API', 'error');
-        }
-      } finally {
-        if (!ignore) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    fetchInitialData();
-
+    const timer = setTimeout(() => void loadAllData(), 0);
+    const timers = toastTimers.current;
     return () => {
-      ignore = true;
+      clearTimeout(timer);
+      loadController.current?.abort();
+      timers.forEach(clearTimeout);
+      timers.clear();
     };
-  }, [addToast]);
+  }, [loadAllData]);
 
   // Seed handler
   const handleSeedData = async () => {
+    if (seeding.current) return;
+    seeding.current = true;
     try {
       setIsSeeding(true);
       const res = await seedApi.triggerSeed(false);
       addToast(
-        `Database Seeded: ${res.summary.pantryItemsSeeded} pantry items, ${res.summary.recipesSeeded} recipes!`,
+        `Added sample data: ${res.summary.pantryItemsSeeded} pantry items and ${res.summary.recipesSeeded} recipes`,
         'success'
       );
       await loadAllData();
-    } catch (err: any) {
-      addToast(err?.message || 'Database seeding failed', 'error');
+    } catch (err: unknown) {
+      addToast(getErrorMessage(err, 'Could not add sample data'), 'error');
     } finally {
+      seeding.current = false;
       setIsSeeding(false);
     }
   };
@@ -124,13 +108,11 @@ export const App: React.FC = () => {
   const handleAddPantryItem = async (data: CreatePantryItemRequest) => {
     try {
       const created = await pantryApi.create(data);
+      dataRevision.current++;
       setPantryItems((prev) => [created, ...prev]);
       addToast(`Added "${created.name}" to inventory`, 'success');
-      // Refresh expiring in case the new item has an early expiration
-      const expiring = await pantryApi.getExpiring();
-      setExpiringItems(expiring);
-    } catch (err: any) {
-      addToast(err?.message || 'Failed to add pantry item', 'error');
+    } catch (err: unknown) {
+      addToast(getErrorMessage(err, 'Failed to add pantry item'), 'error');
       throw err;
     }
   };
@@ -138,12 +120,11 @@ export const App: React.FC = () => {
   const handleUpdatePantryItem = async (id: string, data: UpdatePantryItemRequest) => {
     try {
       const updated = await pantryApi.update(id, data);
+      dataRevision.current++;
       setPantryItems((prev) => prev.map((item) => (item.id === id ? updated : item)));
       addToast(`Updated "${updated.name}"`, 'success');
-      const expiring = await pantryApi.getExpiring();
-      setExpiringItems(expiring);
-    } catch (err: any) {
-      addToast(err?.message || 'Failed to update pantry item', 'error');
+    } catch (err: unknown) {
+      addToast(getErrorMessage(err, 'Failed to update pantry item'), 'error');
       throw err;
     }
   };
@@ -153,11 +134,11 @@ export const App: React.FC = () => {
       const item = pantryItems.find((value) => value.id === id);
       if (!item) return;
       await pantryApi.delete(id, item.version);
+      dataRevision.current++;
       setPantryItems((prev) => prev.filter((item) => item.id !== id));
-      setExpiringItems((prev) => prev.filter((item) => item.id !== id));
       addToast('Item removed from pantry', 'info');
-    } catch (err: any) {
-      addToast(err?.message || 'Failed to delete pantry item', 'error');
+    } catch (err: unknown) {
+      addToast(getErrorMessage(err, 'Failed to delete pantry item'), 'error');
     }
   };
 
@@ -165,10 +146,11 @@ export const App: React.FC = () => {
   const handleAddRecipe = async (data: CreateRecipeRequest) => {
     try {
       const created = await recipeApi.create(data);
+      dataRevision.current++;
       setRecipes((prev) => [created, ...prev]);
       addToast(`Created recipe "${created.title}"`, 'success');
-    } catch (err: any) {
-      addToast(err?.message || 'Failed to create recipe', 'error');
+    } catch (err: unknown) {
+      addToast(getErrorMessage(err, 'Failed to create recipe'), 'error');
       throw err;
     }
   };
@@ -178,10 +160,11 @@ export const App: React.FC = () => {
       const recipe = recipes.find((value) => value.id === id);
       if (!recipe) return;
       await recipeApi.delete(id, recipe.version);
+      dataRevision.current++;
       setRecipes((prev) => prev.filter((r) => r.id !== id));
       addToast('Recipe deleted', 'info');
-    } catch (err: any) {
-      addToast(err?.message || 'Failed to delete recipe', 'error');
+    } catch (err: unknown) {
+      addToast(getErrorMessage(err, 'Failed to delete recipe'), 'error');
     }
   };
 
@@ -189,21 +172,25 @@ export const App: React.FC = () => {
   const handleIngestPayload = async (data: IngestPayloadRequest) => {
     try {
       const created = await ingestApi.ingest(data);
+      dataRevision.current++;
       setIngestPayloads((prev) => [created, ...prev]);
       addToast(`Payload ingested via ${created.source}`, 'success');
-    } catch (err: any) {
-      addToast(err?.message || 'Ingestion failed', 'error');
+    } catch (err: unknown) {
+      addToast(getErrorMessage(err, 'Could not import recipe content'), 'error');
       throw err;
     }
   };
 
   const handleUpdateIngestStatus = async (id: string, status: string) => {
     try {
-      const updated = await ingestApi.updateStatus(id, status, ingestPayloads.find((value) => value.id === id)!.version);
+      const payload = ingestPayloads.find((value) => value.id === id);
+      if (!payload) return;
+      const updated = await ingestApi.updateStatus(id, status, payload.version);
+      dataRevision.current++;
       setIngestPayloads((prev) => prev.map((p) => (p.id === id ? updated : p)));
       addToast(`Status updated to ${status}`, 'info');
-    } catch (err: any) {
-      addToast(err?.message || 'Failed to update status', 'error');
+    } catch (err: unknown) {
+      addToast(getErrorMessage(err, 'Failed to update status'), 'error');
     }
   };
 
@@ -218,6 +205,10 @@ export const App: React.FC = () => {
       />
 
       <main className="app-main">
+        {!isOnline && !isLoading && <div className="container" role="alert" style={{ marginBottom: 20 }}>
+          <p>Could not load your latest data.</p>
+          <button className="btn btn-secondary" onClick={() => { setIsLoading(true); void loadAllData(); }}>Try Again</button>
+        </div>}
         {activeTab === 'pantry' && (
           <PantryDashboard
             items={pantryItems}
@@ -226,6 +217,7 @@ export const App: React.FC = () => {
             onUpdateItem={handleUpdatePantryItem}
             onDeleteItem={handleDeletePantryItem}
             onSeedSampleData={handleSeedData}
+            isSeeding={isSeeding}
             isLoading={isLoading}
           />
         )}
@@ -236,6 +228,7 @@ export const App: React.FC = () => {
             onAddRecipe={handleAddRecipe}
             onDeleteRecipe={handleDeleteRecipe}
             onSeedSampleData={handleSeedData}
+            isSeeding={isSeeding}
             isLoading={isLoading}
           />
         )}
@@ -259,6 +252,7 @@ export const App: React.FC = () => {
             {toast.type === 'info' && <Info size={16} />}
             <span style={{ flex: 1 }}>{toast.message}</span>
             <button
+              aria-label="Dismiss notification"
               onClick={() => removeToast(toast.id)}
               style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', padding: '2px' }}
             >

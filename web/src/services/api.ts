@@ -11,12 +11,12 @@ function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const pantryApi = {
-  getAll: (category?: string, search?: string): Promise<PantryItem[]> => {
+  getAll: (category?: string, search?: string, signal?: AbortSignal): Promise<PantryItem[]> => {
     const params = new URLSearchParams();
     if (category) params.append('category', category);
     if (search) params.append('search', search);
     const query = params.toString() ? `?${params.toString()}` : '';
-    return request<PantryItem[]>(`/pantry${query}`);
+    return request<PantryItem[]>(`/pantry${query}`, { signal });
   },
 
   getExpiring: (beforeDate?: string): Promise<PantryItem[]> => {
@@ -51,24 +51,14 @@ export const pantryApi = {
 };
 
 export const recipeApi = {
-  generate: async (excludeTitles: string[], signal: AbortSignal): Promise<GeneratedRecipe[]> => {
-    const controller = new AbortController();
-    const abort = () => controller.abort();
-    signal.addEventListener('abort', abort, { once: true });
-    if (signal.aborted) abort();
-    const timer = setTimeout(abort, 65000);
-    try {
-      return await request<GeneratedRecipe[]>('/recipes/generate', {
-        method: 'POST', body: JSON.stringify({ excludeTitles }), signal: controller.signal,
-      });
-    } finally {
-      clearTimeout(timer);
-      signal.removeEventListener('abort', abort);
-    }
+  generate: (excludeTitles: string[], signal: AbortSignal): Promise<GeneratedRecipe[]> => {
+    return request<GeneratedRecipe[]>('/recipes/generate', {
+      method: 'POST', body: JSON.stringify({ excludeTitles }), signal,
+    });
   },
-  getAll: (search?: string): Promise<Recipe[]> => {
+  getAll: (search?: string, signal?: AbortSignal): Promise<Recipe[]> => {
     const query = search ? `?search=${encodeURIComponent(search)}` : '';
-    return request<Recipe[]>(`/recipes${query}`);
+    return request<Recipe[]>(`/recipes${query}`, { signal });
   },
 
   getById: (id: string): Promise<Recipe> => {
@@ -98,12 +88,12 @@ export const recipeApi = {
 };
 
 export const ingestApi = {
-  getAll: (status?: string, source?: string): Promise<RawIngestPayload[]> => {
+  getAll: (status?: string, source?: string, signal?: AbortSignal): Promise<RawIngestPayload[]> => {
     const params = new URLSearchParams();
     if (status) params.append('status', status);
     if (source) params.append('source', source);
     const query = params.toString() ? `?${params.toString()}` : '';
-    return request<RawIngestPayload[]>(`/ingest${query}`);
+    return request<RawIngestPayload[]>(`/ingest${query}`, { signal });
   },
 
   getById: (id: string): Promise<RawIngestPayload> => {

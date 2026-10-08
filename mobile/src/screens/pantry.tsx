@@ -3,7 +3,7 @@ import {
   useFeedback,
   useRemovalMotion,
 } from "../components/feedback";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { RefreshControl, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { FoodShape, Icon } from "../components/art";
@@ -40,6 +40,14 @@ export default function PantryScreen() {
     pantryState: { error, loading, loaded },
     reload,
   } = useKitchen();
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const item of pantry) {
+      const category = categoryFor(item.name, item.category, item.location);
+      counts.set(category, (counts.get(category) ?? 0) + 1);
+    }
+    return counts;
+  }, [pantry]);
   return (
     <View style={{ flex: 1 }}>
       <Page
@@ -91,16 +99,7 @@ export default function PantryScreen() {
                     {category}
                   </Text>
                   <Text style={s.muted}>
-                    {
-                      pantry.filter(
-                        (item) =>
-                          categoryFor(
-                            item.name,
-                            item.category,
-                            item.location,
-                          ) === category,
-                      ).length
-                    }{" "}
+                    {categoryCounts.get(category) ?? 0}{" "}
                     items
                   </Text>
                 </Pressable>
@@ -268,12 +267,10 @@ export function InventoryScreen() {
             disabled={deleting || adjusting}
             onBusyChange={setAdjusting}
           />}
-          {confirmId !== item.id && <PantryQuantity
+          {confirmId !== item.id && adjustment?.id === item.id && <PantryQuantity
             item={item}
-            mode={adjustment?.id === item.id ? adjustment.mode : null}
-            onModeChange={(mode) => {
-              if (!mode || (!adjusting && !deleting)) setAdjustment(mode ? { id: item.id, mode } : null);
-            }}
+            mode={adjustment.mode}
+            onClose={() => setAdjustment(null)}
             onBusyChange={setAdjusting}
           />}
           {confirmId === item.id && (

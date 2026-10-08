@@ -80,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           next.refreshToken ||= current.refreshToken;
           token.current = next;
           await persist(next);
+          if (ticket !== generation.current) throw new Error("Session changed");
           return next.accessToken;
         } catch {
           if (ticket === generation.current) {
@@ -162,6 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (ticket !== generation.current) return;
       token.current = next;
       await verify(false);
+      if (ticket !== generation.current) return;
       await persist(next);
     } catch {
       if (ticket === generation.current) {

@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Recipe } from '../../types/recipe';
 import { X, Clock, Users, ExternalLink, FileText } from 'lucide-react';
+import { Modal } from '../common/Modal';
 
 interface RecipeDetailModalProps {
   recipe: Recipe | null;
@@ -16,8 +17,7 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
   if (!isOpen || !recipe) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" style={{ maxWidth: '680px' }} onClick={(e) => e.stopPropagation()}>
+      <Modal label={recipe.title} onClose={onClose} maxWidth="680px">
         {/* Modal Header */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
           <div>
@@ -30,7 +30,7 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
               </p>
             )}
           </div>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}>
+          <button className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Close recipe details">
             <X size={18} />
           </button>
         </div>
@@ -84,7 +84,6 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
           <span>ID: {recipe.id}</span>
           <span>Added: {new Date(recipe.createdAt).toLocaleDateString()}</span>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 };

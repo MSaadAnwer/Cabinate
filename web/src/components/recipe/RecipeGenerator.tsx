@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { recipeApi } from '../../services/api';
 import type { GeneratedRecipe } from '../../types/recipe';
+import { getErrorMessage } from '../../utils/errors';
 
 export function RecipeGenerator({ disabled, hasDraft, onChoose }: {
   disabled: boolean;
@@ -25,7 +26,7 @@ export function RecipeGenerator({ disabled, hasDraft, onChoose }: {
       setRecipes(next);
       history.current = [...history.current, ...next.map(recipe => recipe.title)].slice(-60);
     } catch (e) {
-      if (!controller.signal.aborted) setError((e as { message?: string }).message || 'Could not generate recipes. Please try again.');
+      if (!controller.signal.aborted) setError(getErrorMessage(e, 'Could not generate recipes. Please try again.'));
     } finally {
       if (!controller.signal.aborted) setPending(false);
       active.current = null;
@@ -39,7 +40,7 @@ export function RecipeGenerator({ disabled, hasDraft, onChoose }: {
     </button>
     {error && <p role="alert">{error}</p>}
     <div aria-live="polite" aria-busy={pending} style={{ display: 'grid', gap: 12 }}>
-      {recipes.map(recipe => <article key={recipe.title} style={{ padding: 16, border: '1px solid var(--color-border)', borderRadius: 12 }}>
+      {recipes.map(recipe => <article key={recipe.title} style={{ padding: 16, border: '1px solid var(--border-subtle)', borderRadius: 12 }}>
         <h4>{recipe.title}</h4>
         <p>{recipe.description}</p>
         <p>{recipe.prepTimeMinutes + recipe.cookTimeMinutes} min · Serves {recipe.servings}</p>

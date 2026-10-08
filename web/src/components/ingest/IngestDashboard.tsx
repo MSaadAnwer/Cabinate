@@ -21,9 +21,9 @@ export const IngestDashboard: React.FC<IngestDashboardProps> = ({
       {/* View Header */}
       <div className="view-header">
         <div className="view-header-content text-left">
-          <h1>Raw Ingestion Workshop</h1>
+          <h1>Import Recipes</h1>
           <p>
-            Staging environment for unstructured recipes, OCR text, and web scrapers prior to analytical ETL.
+            Paste recipe text, HTML, or JSON to keep it ready for processing.
           </p>
         </div>
       </div>

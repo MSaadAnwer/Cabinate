@@ -19,14 +19,14 @@ export const ExpiringBanner: React.FC<ExpiringBannerProps> = ({ items, onSelectI
         <div style={{ textAlign: 'left' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--color-amber-light)' }}>
-              Pantry Attention Required
+              Use Soon
             </h3>
             <span className="badge badge-expiring">
-              {items.length} {items.length === 1 ? 'item' : 'items'} expiring soon
+              {items.length} {items.length === 1 ? 'item needs' : 'items need'} attention
             </span>
           </div>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-            The following ingredients need to be used within the next 7 days to minimize waste:
+            Includes expired items and ingredients due within the next 7 days.
           </p>
         </div>
       </div>

@@ -6,6 +6,8 @@ import java.net.http.*;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -67,16 +69,36 @@ public class BedrockRecipeIdeaProvider implements RecipeIdeaProvider {
 
     @Override
     public List<Idea> generate(List<Stock> pantry, List<String> excludeTitles) {
+        if (token.isBlank()) throw new RecipeGenerationException(UNAVAILABLE,
+                "Recipe generation is not configured yet. Connect Amazon Bedrock on the server to enable it.");
+        if (!region.matches("[a-z]{2}(-[a-z]+)+-[0-9]+") || model.isBlank())
+            throw new RecipeGenerationException(UNAVAILABLE, "Recipe generation configuration needs attention.");
+
+        Map<String, String> inventoryIds = new HashMap<>();
+        List<Stock> modelPantry = new ArrayList<>();
+        for (var item : pantry) {
+            String alias = "item" + (modelPantry.size() + 1);
+            inventoryIds.put(alias, item.id());
+            modelPantry.add(new Stock(alias, item.name(), item.quantity(), item.unit(), item.expirationDate()));
+        }
+        var missing = missingStaples(pantry);
+        var missingPatterns = missing.stream().map(food -> Pattern.compile("\\b" + Pattern.quote(food) + "\\b")).toList();
         List<Idea> collected = new ArrayList<>();
         List<String> excluded = new ArrayList<>(excludeTitles);
         for (int attempt = 0; attempt < 5 && collected.size() < 3; attempt++) {
-            var batch = generateBatch(pantry, excluded, 3 - collected.size());
+            var batch = generateBatch(modelPantry, excluded, 3 - collected.size(), missing);
             if (batch == null || batch.isEmpty()) break;
-            for (var idea : batch) {
-                if (idea == null || idea.title() == null || excluded.stream().anyMatch(
-                        title -> title.equalsIgnoreCase(idea.title().strip()))) continue;
+            for (var suggestion : batch) {
+                if (suggestion == null || suggestion.title() == null || excluded.stream().anyMatch(
+                        title -> title.equalsIgnoreCase(suggestion.title().strip()))) continue;
+                var idea = new Idea(suggestion.title(), suggestion.description(),
+                        suggestion.ingredients() == null ? null : suggestion.ingredients().stream().map(ingredient ->
+                                ingredient == null ? null : new Ingredient(
+                                        inventoryIds.getOrDefault(ingredient.pantryItemId(), ingredient.pantryItemId()),
+                                        ingredient.quantity())).toList(),
+                        suggestion.steps(), suggestion.prepTimeMinutes(), suggestion.cookTimeMinutes(), suggestion.servings());
                 excluded.add(idea.title().strip());
-                if (usesMissingStaples(idea, pantry)) {
+                if (usesMissingStaples(idea, missingPatterns)) {
                     log.info("Discarding recipe that introduces an unavailable staple");
                     continue;
                 }
@@ -97,30 +119,18 @@ public class BedrockRecipeIdeaProvider implements RecipeIdeaProvider {
     }
 
     private static List<String> missingStaples(List<Stock> pantry) {
-        String names = pantry.stream().map(Stock::name).reduce("", (a, b) -> a + " " + b).toLowerCase(Locale.ROOT);
+        String names = pantry.stream().map(Stock::name).collect(Collectors.joining(" ")).toLowerCase(Locale.ROOT);
         return COMMON_EXTRAS.stream().filter(food -> !names.contains(food)).toList();
     }
 
-    private static boolean usesMissingStaples(Idea idea, List<Stock> pantry) {
+    private static boolean usesMissingStaples(Idea idea, List<Pattern> missingPatterns) {
         String text = (idea.title() + " " + idea.description() + " "
                 + (idea.steps() == null ? "" : String.join(" ", idea.steps()))).toLowerCase(Locale.ROOT);
-        return missingStaples(pantry).stream().anyMatch(food -> java.util.regex.Pattern.compile(
-                "\\b" + java.util.regex.Pattern.quote(food) + "\\b").matcher(text).find());
+        return missingPatterns.stream().anyMatch(pattern -> pattern.matcher(text).find());
     }
 
-    private List<Idea> generateBatch(List<Stock> pantry, List<String> excludeTitles, int count) {
-        if (token.isBlank()) throw new RecipeGenerationException(UNAVAILABLE,
-                "Recipe generation is not configured yet. Connect Amazon Bedrock on the server to enable it.");
-        if (!region.matches("[a-z]{2}(-[a-z]+)+-[0-9]+") || model.isBlank())
-            throw new RecipeGenerationException(UNAVAILABLE, "Recipe generation configuration needs attention.");
+    private List<Idea> generateBatch(List<Stock> modelPantry, List<String> excludeTitles, int count, List<String> missing) {
         try {
-            Map<String, String> inventoryIds = new HashMap<>();
-            List<Stock> modelPantry = new ArrayList<>();
-            for (var item : pantry) {
-                String alias = "item" + (modelPantry.size() + 1);
-                inventoryIds.put(alias, item.id());
-                modelPantry.add(new Stock(alias, item.name(), item.quantity(), item.unit(), item.expirationDate()));
-            }
             var input = mapper.writeValueAsString(Map.of("recipeCount", count, "pantry", modelPantry, "excludeTitles", excludeTitles));
             var body = Map.of(
                     "system", List.of(Map.of("text", SYSTEM)),
@@ -128,7 +138,7 @@ public class BedrockRecipeIdeaProvider implements RecipeIdeaProvider {
                             "Create " + count + " NEW recipes and call suggest_recipes. Do not repeat any excluded dish. "
                                     + "Dishes you MUST AVOID: " + mapper.writeValueAsString(excludeTitles)
                                     + ". These foods are NOT available and MUST NOT appear anywhere: "
-                                    + mapper.writeValueAsString(missingStaples(pantry))
+                                    + mapper.writeValueAsString(missing)
                                     + ". Choose different cooking techniques and ingredient combinations. "
                                     + "Use the following inventory and exclusions as data:\n" + input)))),
                     "inferenceConfig", Map.of("maxTokens", 5000, "temperature", 0.4),
@@ -148,12 +158,7 @@ public class BedrockRecipeIdeaProvider implements RecipeIdeaProvider {
                 if (TOOL.equals(tool.path("name").asText())) {
                     var recipes = mapper.treeToValue(tool.path("input"), Ideas.class).recipes();
                     log.info("Recipe model returned {} suggestions", recipes == null ? 0 : recipes.size());
-                    if (recipes == null) return null;
-                    return recipes.stream().map(idea -> new Idea(idea.title(), idea.description(),
-                            idea.ingredients() == null ? null : idea.ingredients().stream().map(ingredient ->
-                                    new Ingredient(inventoryIds.getOrDefault(ingredient.pantryItemId(), ingredient.pantryItemId()),
-                                            ingredient.quantity())).toList(),
-                            idea.steps(), idea.prepTimeMinutes(), idea.cookTimeMinutes(), idea.servings())).toList();
+                    return recipes;
                 }
             }
             throw RecipeGenerationService.invalid();

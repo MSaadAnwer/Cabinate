@@ -1,10 +1,25 @@
-let readToken: () => Promise<string | undefined> = async () => undefined;
-let rejectToken: (token?: string) => void = () => {};
+type Credentials = {
+  read: () => Promise<string | undefined>;
+  reject: (token?: string) => void;
+};
 
-export function configureCredentials(read: typeof readToken, reject: typeof rejectToken) {
-  readToken = read;
-  rejectToken = reject;
-  return () => { readToken = async () => undefined; rejectToken = () => {}; };
+const anonymous: Credentials = { read: async () => undefined, reject: () => {} };
+let credentials = anonymous;
+
+export function configureCredentials(read: Credentials["read"], reject: Credentials["reject"]) {
+  const configured = { read, reject };
+  credentials = configured;
+  return () => {
+    // An old provider's cleanup must not disconnect a newer account.
+    if (credentials === configured) credentials = anonymous;
+  };
 }
-export const accessToken = () => readToken();
-export const credentialsRejected = (token?: string) => rejectToken(token);
+
+export async function accessToken() {
+  const configured = credentials;
+  const token = await configured.read();
+  if (credentials !== configured) throw new Error("Your session changed. Please sign in again.");
+  return token;
+}
+
+export const credentialsRejected = (token?: string) => credentials.reject(token);
