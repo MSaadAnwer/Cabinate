@@ -34,3 +34,9 @@ test('invalid dates cannot become warning badges', () => {
     assert.equal(daysUntilExpiration(value), null);
   }
 });
+
+test('depleted stock does not produce expiration reminders', () => {
+  const empty = { ...item('empty', '2026-10-06'), quantity: 0 };
+  const stocked = item('stocked', '2026-10-08');
+  assert.deepEqual(getExpiringItems([empty, stocked], new Date(2026, 9, 7)), [stocked]);
+});

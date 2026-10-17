@@ -372,11 +372,14 @@ export function ListDetailScreen() {
                 </View>
                 <IconButton
                   name="close"
-                  label="Close item composer"
+                  label="Cancel new item"
                   disabled={busy}
                   onPress={() => {
                     Keyboard.dismiss();
                     setShowComposer(false);
+                    setItemName("");
+                    setCategory(null);
+                    setError("");
                   }}
                 />
               </View>
@@ -493,7 +496,7 @@ export function ListDetailScreen() {
                               }
                             : l,
                         ),
-                      })).catch(() => {});
+                      })).catch(() => setError("Could not update this item. Try again."));
                     }}
                   />
                 </View>

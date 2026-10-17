@@ -9,7 +9,6 @@ import {
 import {
   AccessibilityInfo,
   ActivityIndicator,
-  Alert,
   Animated,
   InputAccessoryView,
   Keyboard,
@@ -655,13 +654,6 @@ export function DataNotice({
       </Text>
       <Button title="Try again" secondary pending={loading} onPress={onRetry} />
     </View>
-  );
-}
-
-export function reportError(error: unknown) {
-  Alert.alert(
-    "Could not save",
-    (error as Error).message || "Please try again.",
   );
 }
 

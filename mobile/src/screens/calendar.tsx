@@ -68,7 +68,7 @@ export default function CalendarScreen() {
   );
   const savedMeals = data.meals.filter((meal) => meal.id !== pendingPhoto?.id);
   const photos = savedMeals.filter((meal) => meal.date === selected),
-    expiring = pantry.filter((item) => item.expirationDate === selected);
+    expiring = pantry.filter((item) => item.quantity > 0 && item.expirationDate === selected);
   const persistPhoto = async (photo: PhotoEntry) => {
     await update((previous) => ({
       ...previous,
@@ -226,7 +226,7 @@ export default function CalendarScreen() {
         {cells.map((date, index) => {
           const photo = date && savedMeals.find((meal) => meal.date === date);
           const expiration =
-            date && pantry.some((item) => item.expirationDate === date);
+            date && pantry.some((item) => item.quantity > 0 && item.expirationDate === date);
           return date ? (
             <Pressable
               key={date}

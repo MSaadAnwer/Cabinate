@@ -30,7 +30,7 @@ export function NotificationsScreen() {
   } = useKitchen();
   const items = pantry
     .filter(
-      (item) => item.expirationDate && daysUntil(item.expirationDate) <= 7,
+      (item) => item.quantity > 0 && item.expirationDate && daysUntil(item.expirationDate) <= 7,
     )
     .sort((a, b) =>
       (a.expirationDate || "").localeCompare(b.expirationDate || ""),

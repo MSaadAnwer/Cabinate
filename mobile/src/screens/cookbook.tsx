@@ -22,7 +22,6 @@ import {
   FloatingAdd,
   FormPage,
   Page,
-  reportError,
   s,
 } from "../components/ui";
 import { useKitchen } from "../state/kitchen-store";
@@ -173,12 +172,14 @@ export function RecipeDetailScreen() {
     recipes,
     data,
     update,
+    ready,
     recipeState: { loaded, loading, error },
     reload,
   } = useKitchen();
   const [tab, setTab] = useState<"ingredients" | "steps">(
     requestedTab === "steps" ? "steps" : "ingredients",
   );
+  const [progressError, setProgressError] = useState("");
   const recipe = recipes.find((item) => item.id === id);
   if (!recipe && (!loaded || loading || error))
     return (
@@ -206,6 +207,7 @@ export function RecipeDetailScreen() {
   return (
     <Page>
       <Text style={s.title}>{recipe.title}</Text>
+      <ErrorText message={progressError} />
       {recipe.description && <Text style={s.body}>{recipe.description}</Text>}
       <Text style={s.muted}>
         {recipe.servings ? `Serves ${recipe.servings}` : ""}
@@ -267,8 +269,10 @@ export function RecipeDetailScreen() {
             <View key={index}>
               <CheckRow
                 checked={checked.includes(index)}
+                disabled={!ready}
                 title={`${index + 1}. ${step}`}
                 onPress={() => {
+                  setProgressError("");
                   void update((previous) => {
                     const values = previous.steps[id] || [];
                     return {
@@ -280,7 +284,7 @@ export function RecipeDetailScreen() {
                           : [...values, index],
                       },
                     };
-                  }).catch(reportError);
+                  }).catch(() => setProgressError("Could not save cooking progress. Try again."));
                 }}
               />
               <StepTimers
@@ -308,11 +312,13 @@ export function RecipeDetailScreen() {
                 <Button
                   secondary
                   title="Reset cooking progress"
+                  disabled={!ready}
                   onPress={() => {
+                    setProgressError("");
                     void update((previous) => ({
                       ...previous,
                       steps: { ...previous.steps, [id]: [] },
-                    })).catch(reportError);
+                    })).catch(() => setProgressError("Could not reset cooking progress. Try again."));
                   }}
                 />
               </View>

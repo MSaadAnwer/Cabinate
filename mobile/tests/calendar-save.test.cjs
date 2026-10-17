@@ -2,7 +2,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const loadTypeScript = require("./load-typescript.cjs");
 
-function harness() {
+function harness(pantry = []) {
   const states = [], refs = [], writes = [], notices = [];
   let stateIndex, refIndex, fail = false;
   const data = { meals: [] };
@@ -23,7 +23,7 @@ function harness() {
     "../components/content-layout": { useContentLayout: () => ({ gutter: 20, fontScale: 1 }) },
     "../components/ui": Object.fromEntries(["Button", "ErrorText", "DataNotice", "Field", "FormPage", "IconButton", "Sheet", "focusControl", "s"].map((name) => [name, name === "s" ? {} : name])),
     "../state/kitchen-store": { useKitchen: () => ({
-      pantry: [], data, ready: true, pantryState: { loaded: true },
+      pantry, data, ready: true, pantryState: { loaded: true },
       update: async (change) => {
         if (fail) throw new Error("storage unavailable");
         Object.assign(data, change(data));
@@ -31,7 +31,7 @@ function harness() {
       },
     }) },
     "../services/photos": { capturePhoto: async () => "file:///meal.jpg" },
-    "../utils/kitchen": { expiryLabel: () => "", localDate: () => "2026-10-08", newId: () => "draft-photo" },
+    "../utils/kitchen": { expiryLabel: () => "", localDate: (date) => date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}` : "2026-10-08", newId: () => "draft-photo" },
   });
   function find(tree, type, match) {
     if (!tree || typeof tree !== "object") return;
@@ -45,10 +45,21 @@ function harness() {
     render() {
       stateIndex = refIndex = 0;
       const tree = Calendar();
-      return { tree, field: find(tree, "Field", () => true), button: (title) => find(tree, "Button", (props) => props.title === title) };
+      return { tree, field: find(tree, "Field", () => true), find: (type, match) => find(tree, type, match), button: (title) => find(tree, "Button", (props) => props.title === title) };
     },
   };
 }
+
+test("used-up inventory produces neither calendar markers nor daily expiration cards", () => {
+  const h = harness([
+    { id: "empty", name: "Used-up milk", quantity: 0, expirationDate: "2026-10-08" },
+    { id: "stock", name: "Tomatoes", quantity: 1, expirationDate: "2026-10-09" },
+  ]);
+  const screen = h.render();
+  assert.ok(screen.find("Touch", p => p.accessibilityLabel === "2026-10-08"));
+  assert.ok(screen.find("Touch", p => p.accessibilityLabel === "2026-10-09, food expiration"));
+  assert.ok(screen.find("Text", p => p.children === "No pantry expirations recorded for this day."));
+});
 
 test("photo selection waits for explicit save and uses the note typed afterward", async () => {
   const h = harness();

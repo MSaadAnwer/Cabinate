@@ -14,6 +14,6 @@ export function daysUntilExpiration(date: string, today = new Date()): number | 
 export function getExpiringItems(items: PantryItem[], today = new Date()): PantryItem[] {
   return items.filter((item) => {
     const days = item.expirationDate ? daysUntilExpiration(item.expirationDate, today) : null;
-    return days !== null && days <= 7;
+    return item.quantity > 0 && days !== null && days <= 7;
   }).sort((a, b) => a.expirationDate!.localeCompare(b.expirationDate!));
 }
