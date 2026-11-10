@@ -28,6 +28,10 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+    @ExceptionHandler(com.cabinate.api.common.security.AccountLinkException.class)
+    public ResponseEntity<ErrorResponse> handleLink(com.cabinate.api.common.security.AccountLinkException ex, HttpServletRequest request) {
+        return error(ex.status(), ex.getMessage(), request);
+    }
     @ExceptionHandler(ReceiptException.class)
     public ResponseEntity<ErrorResponse> handleReceipt(ReceiptException ex, HttpServletRequest request) {
         return error(ex.status(), ex.getMessage(), request);

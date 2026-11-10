@@ -111,6 +111,7 @@ function Navigator() {
           options={{ title: "Inspiration" }}
         />
         <Stack.Screen name="captures" options={{ title: "Capture inbox" }} />
+        <Stack.Screen name="settings" options={{ title: "Settings" }} />
         {[
           "add-pantry",
           "new-list",

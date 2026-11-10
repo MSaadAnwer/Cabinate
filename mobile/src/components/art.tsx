@@ -22,8 +22,10 @@ export type IconName =
   | "close"
   | "sparkles"
   | "chevron"
-  | "trash";
+  | "trash"
+  | "settings";
 const iconPaths: Record<IconName, string> = {
+  settings: "M9 3h6l1 3 3 1 2 5-2 5-3 1-1 3H9l-1-3-3-1-2-5 2-5 3-1 1-3ZM16 12a4 4 0 1 0-8 0 4 4 0 0 0 8 0",
   search: "M21 21l-5-5M18 10a8 8 0 1 0-16 0 8 8 0 0 0 16 0",
   more: "M6 12a1 1 0 1 0-2 0 1 1 0 0 0 2 0M13 12a1 1 0 1 0-2 0 1 1 0 0 0 2 0M20 12a1 1 0 1 0-2 0 1 1 0 0 0 2 0",
   home: "M3 11l9-8 9 8M5 10v11h14V10M9 21v-7h6v7",

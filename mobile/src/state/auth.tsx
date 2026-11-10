@@ -1,5 +1,5 @@
 import { createContext, use, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { Platform, Text, View } from "react-native";
+import { Platform, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as AuthSession from "expo-auth-session";
 import * as SecureStore from "expo-secure-store";
@@ -7,10 +7,13 @@ import * as WebBrowser from "expo-web-browser";
 import * as Notifications from "expo-notifications";
 import { Button, ErrorText, LoadingRows, s, colors } from "../components/ui";
 import { TomatoMark } from "../components/art";
+import { SignInButton, type SignInMethod } from "../components/sign-in-button";
+import { Touch } from "../components/feedback";
 import { apiConfig } from "../services/api";
 import { requestJson } from "../services/http";
 import { configureCredentials } from "../services/credentials";
 import { withDeadline } from "../../../shared/deadline.ts";
+import { linkAccount as startAccountLink, type LinkPreview, type LinkedAccounts } from "../services/account-linking";
 
 WebBrowser.maybeCompleteAuthSession();
 const issuer = process.env.EXPO_PUBLIC_AUTH_ISSUER;
@@ -24,7 +27,10 @@ const redirectUri = AuthSession.makeRedirectUri({ scheme: "cabinate", path: "aut
 const credentialKey = "cabinate.oidc.v1";
 const configuration = JSON.stringify([issuer, clientId, audience, apiConfig.baseUrl]);
 type Identity = { subject: string; accountId: string; development: boolean };
-type Auth = { identity: Identity; signOut: () => Promise<void> };
+type Auth = { identity: Identity; signOut: () => Promise<void>;
+  linkAccount: (method: SignInMethod, confirm: (preview: LinkPreview) => Promise<boolean>, signal: AbortSignal) => Promise<LinkedAccounts | null>;
+  linkedAccounts: () => Promise<LinkedAccounts>;
+};
 const Context = createContext<Auth | null>(null);
 let storageWrites: Promise<void> = Promise.resolve();
 
@@ -47,6 +53,7 @@ export function AuthProvider({ children, onReady }: { children: ReactNode; onRea
   const [identity, setIdentity] = useState<Identity | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [activeMethod, setActiveMethod] = useState<SignInMethod | null>(null);
   const [configured, setConfigured] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => { if (!loading) onReady?.(); }, [loading, onReady]);
@@ -148,10 +155,11 @@ export function AuthProvider({ children, onReady }: { children: ReactNode; onRea
   }, [verify]);
   useEffect(() => { void initialize(); }, [initialize]);
 
-  const signIn = async () => {
+  const signIn = async (method: SignInMethod, signup = false) => {
     if (!issuer || !clientId || working.current) return;
     working.current = true;
     setBusy(true);
+    setActiveMethod(method);
     setError("");
     const ticket = ++generation.current;
     let stage = "provider discovery";
@@ -159,7 +167,12 @@ export function AuthProvider({ children, onReady }: { children: ReactNode; onRea
       const discovery = await withDeadline(AuthSession.fetchDiscoveryAsync(discoveryIssuer!));
       stage = "preparing login";
       const request = new AuthSession.AuthRequest({ clientId, redirectUri, scopes, usePKCE: true,
-        responseType: AuthSession.ResponseType.Code, extraParams: audience ? { audience } : {} });
+        responseType: AuthSession.ResponseType.Code, extraParams: {
+          ...(audience ? { audience } : {}),
+          connection: method === "google" ? "google-oauth2" : method === "apple" ? "apple"
+            : process.env.EXPO_PUBLIC_AUTH_EMAIL_CONNECTION || "Username-Password-Authentication",
+          ...(signup ? { screen_hint: "signup" } : {}),
+        } });
       // Prepare PKCE separately so pre-browser failures can be diagnosed safely.
       await request.makeAuthUrlAsync(discovery);
       stage = "opening login";
@@ -188,23 +201,53 @@ export function AuthProvider({ children, onReady }: { children: ReactNode; onRea
           : "Please try again.";
         setError(__DEV__ ? `Sign-in failed (${stage}): ${detail}` : "Could not sign in. Please try again.");
       }
-    } finally { working.current = false; setBusy(false); }
+    } finally { working.current = false; setBusy(false); setActiveMethod(null); }
   };
 
-  if (identity) return <Context value={{ identity, signOut }}>{children}</Context>;
+  const linkedAccounts = async () => {
+    const bearer = await getToken();
+    return requestJson<LinkedAccounts>(`${apiConfig.baseUrl}/auth/links`, { headers: { Authorization: `Bearer ${bearer}` } });
+  };
+  const linkAccount = async (method: SignInMethod, confirm: (preview: LinkPreview) => Promise<boolean>, signal: AbortSignal) => {
+    if (!identity || identity.development || !issuer || !clientId || working.current) throw new Error("Account linking is not available right now.");
+    const ticket = generation.current;
+    working.current = true;
+    try {
+      return await startAccountLink({ issuer, clientId, audience, baseUrl: apiConfig.baseUrl, subject: identity.subject,
+        method, confirm, signal, getToken, redirectUri,
+        emailConnection: process.env.EXPO_PUBLIC_AUTH_EMAIL_CONNECTION || "Username-Password-Authentication",
+        assertCurrent: () => { if (ticket !== generation.current) throw new Error("Your account changed. Please start linking again."); },
+      });
+    } finally { working.current = false; }
+  };
+  if (identity) return <Context value={{ identity, signOut, linkAccount, linkedAccounts }}>{children}</Context>;
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.cream, justifyContent: "center", padding: 28 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.cream }}>
+      <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 28 }}>
       <View style={{ gap: 20, width: "100%", maxWidth: 420, alignSelf: "center" }}>
         <TomatoMark size={64} />
         <Text style={s.title}>Your kitchen, all in one place.</Text>
         <Text style={s.body}>Sign in to open your pantry and cookbook.</Text>
         {loading ? <LoadingRows label="Opening your account" /> : <>
           <ErrorText message={error} />
-          {configured && <Button title="Sign in" pending={busy} onPress={() => void signIn()} />}
+          {configured && <View style={{ gap: 12 }}>
+            <SignInButton method="google" title="Sign in with Google" pending={busy && activeMethod === "google"} disabled={busy} onPress={() => void signIn("google")} />
+            <SignInButton method="apple" title="Sign in with Apple" pending={busy && activeMethod === "apple"} disabled={busy} onPress={() => void signIn("apple")} />
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginVertical: 4 }}>
+              <View style={{ flex: 1, height: 1, backgroundColor: "#D9DECF" }} />
+              <Text style={s.muted}>or</Text>
+              <View style={{ flex: 1, height: 1, backgroundColor: "#D9DECF" }} />
+            </View>
+            <SignInButton method="email" title="Sign up with Email" pending={busy && activeMethod === "email"} disabled={busy} onPress={() => void signIn("email", true)} />
+            <Touch accessibilityLabel="Already have an account? Sign in with email" disabled={busy} onPress={() => void signIn("email")} style={{ minHeight: 44, justifyContent: "center", alignItems: "center", paddingVertical: 10 }}>
+              <Text style={[s.muted, { textAlign: "center" }]}>Already have an account? <Text style={{ color: colors.ink, textDecorationLine: "underline" }}>Sign in with email</Text></Text>
+            </Touch>
+          </View>}
           {!configured && !error && <Text style={s.muted}>Sign-in is being set up. Please check back soon.</Text>}
-          <Button title="Try again" secondary disabled={busy} onPress={() => void initialize()} />
+          {!configured && !!error && <Button title="Try again" secondary disabled={busy} onPress={() => void initialize()} />}
         </>}
       </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }

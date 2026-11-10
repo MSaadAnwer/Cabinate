@@ -39,12 +39,43 @@ Expo Go cannot provide this app's custom native callback scheme. Expo web uses i
 origin's `/auth` callback; register that URL if testing the mobile UI in a browser.
 
 `GET /api/v1/auth/config` is public and reports mode/configuration readiness.
+
+### Mobile provider buttons (Auth0)
+
+The mobile account screen offers Google, Apple, and email sign-up, with a small email sign-in link for returning users. All use the existing system-browser Authorization Code + PKCE flow and verify the resulting Auth0 access token with the API.
+
+- Google sends `connection=google-oauth2`.
+- Apple sends `connection=apple`. The button is wired, but Apple will not authenticate until its social connection is configured and enabled for the mobile application in Auth0. This is a browser-based Apple flow, not the native Apple SDK flow.
+- Email sends the database connection name (default `Username-Password-Authentication`, override with `EXPO_PUBLIC_AUTH_EMAIL_CONNECTION`). Sign-up additionally sends `screen_hint=signup`; returning email sign-in omits it.
+
+Enable the Google and Apple social connections and the email database connection for the Cabinate application. Database sign-ups must be allowed. Apple requires Apple Developer credentials and the web-flow configuration described in [Auth0's Apple web guide](https://auth0.com/docs/authenticate/identity-providers/social-identity-providers/apple-web). Configure private Apple signing credentials only in Auth0; never in the app or repository. Restart Metro after changing public connection-name configuration.
+
+Verify each provider on the phone, including cancellation, successful return, an existing email login, and a new email registration. Different provider identities are separate Cabinate accounts unless securely linked through a future account-linking flow; matching email addresses do not merge kitchen data.
+
 `GET /api/v1/auth/me` requires a valid token and returns `{subject, accountId}`.
 Public FDA recall notices remain readable without signing in. All operational queries,
 including recipe-generation stock, are scoped to the current account. Foreign IDs
 return 404. Security-filter failures return the normal JSON contract with 401 or 403.
 
 ## Client sessions and local data
+
+### Settings and user-initiated linking
+
+Account retains the kitchen summary and saved captures. Its Settings button opens a separate screen with connected logins, linking actions, and confirmed sign-out.
+
+Linking keeps the currently signed-in Auth0 subject as primary, preserving Cabinate's existing issuer/subject-derived ownership and device namespace. To retain an existing Google kitchen, sign into Google first, then open Account → Settings → Link Apple account. The flow does not compare emails to decide ownership.
+
+The backend creates one ten-minute challenge per signed-in account, bound to its subject and authorized client (`azp`). The app reauthenticates the primary provider using Authorization Code + PKCE, `prompt=login`, `max_age=0`, and a challenge nonce. It requests the Auth0 Management API audience with only `update:current_user_identities` alongside the standard identity scopes. The secondary provider is authenticated separately with another nonce. These proof tokens are held in memory only and never replace or persist as the normal Cabinate session.
+
+The backend verifies signatures, issuer, token lifetime, client audience, nonce, verified email, recent `auth_time`, primary subject, and the management token's subject/client/audience/scope. A preview returns only the verified secondary account's ID, provider, and email. The client checks that account's local kitchen namespace and asks the user to confirm. The final endpoint revalidates proofs and atomically consumes the challenge before calling Auth0's self-service link endpoint using the primary user's management access token and secondary ID token. No administrator token, client secret, or additional backend linking environment variable is needed.
+
+**Auth0 prerequisites:** the application must be allowed to request the Management API's `update:current_user_identities` scope, both connections must be enabled, and the tenant's plan must support linking. Use RS256 ID tokens. `CABINATE_AUTH_ISSUER` must be the Auth0 issuer used by the mobile client; custom-domain configurations must use the corresponding Auth0 Management API audience or adapt the audience configuration before enabling this flow. [Auth0's self-service linking guide](https://auth0.com/docs/manage-users/user-accounts/user-account-linking/user-initiated-account-linking-client-side-implementation).
+
+**Existing data:** linking is blocked if the secondary account has pantry items, recipes, captures, receipt drafts, a recorded linked-account group, or nonempty/unreadable local kitchen data on this device. This release does not merge populated accounts or move local records from other devices. Data on a different device cannot be inspected; the confirmation explains this. Users should finish/save activity on other devices before linking. Concurrent writes from an already-open secondary session are not globally locked by the external Auth0 operation; no Cabinate records are deleted or reassigned by linking.
+
+Successful provider names are recorded in `account_links` for Settings. This display is not an authoritative live view of changes made directly in the Auth0 dashboard. Unlinking, remote reconciliation, and populated-kitchen migrations are future work. Lost provider responses can leave the outcome uncertain: the challenge is not replayed, and the user is told to sign out and check both logins before retrying. Existing secondary access tokens may remain valid for their original subject until expiry; fresh logins use the Auth0 primary identity.
+
+Verification covers nonce/client/subject/scope mismatches, stale proofs/challenges, secondary data, one-time consumption, provider rejection, browser cancellation, account changes, local-data checks, and final confirmation. Full live verification still requires authenticating both accounts on the phone; automated tests never link real identities.
 
 Mobile uses Expo AuthSession with PKCE and stores native credentials in SecureStore,
 accessible only on the unlocked device. Browser tokens stay in memory; only the brief

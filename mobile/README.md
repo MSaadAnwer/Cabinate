@@ -19,6 +19,8 @@ Sign in to the same Expo account on the PC and in Expo Go. Connect the phone to 
 
 ## Current experience
 
+- Account keeps the kitchen summary and saved links. Account → Settings contains connected logins, Google/Apple/email account linking, and sign-out. Link from the kitchen you want to keep; both providers must be reauthenticated and a final confirmation is required. Existing secondary kitchens are protected from automatic merging. See [account-linking setup and limits](../docs/account-access.md#settings-and-user-initiated-linking).
+
 - Home: farm silhouettes, notifications/calendar shortcuts, and four illustrated navigation cards.
 - Pantry: illustrated categories, All/search, manual item creation with expiration dates, receipt scanning, and saved product links. Scan a receipt photo to review editable food names, quantities, and units before adding selected items. Uncertain amounts stay blank; non-food purchases stay unchecked in a skipped-items section. Confirm an uncertain classification with "This is food" before selecting it. Receipt photos and reviews stay in the local archive, and pending imports resume with the same confirmed items after a failed response.
 - List: multiple named lists, phrase-aware aisle grouping with plural/quantity normalization, remembered category corrections, item checks, and recipe import with optional pantry matching and a review step. Corrections are saved on this device and apply to future additions and imports; existing saved aisles remain unchanged until edited.

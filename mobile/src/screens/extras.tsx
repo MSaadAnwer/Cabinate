@@ -77,7 +77,7 @@ export function NotificationsScreen() {
   );
 }
 export function AccountScreen() {
-  const { identity, signOut } = useAuth();
+  const { identity } = useAuth();
   const {
     data,
     pantry,
@@ -101,7 +101,6 @@ export function AccountScreen() {
           <Text style={s.body}>
             {identity.development ? "Local development account" : "Your pantry and cookbook belong to your signed-in account."}
           </Text>
-          {!identity.development && <Button title="Sign out" secondary onPress={() => void signOut().catch(() => {})} />}
         </View>
         <View style={s.card}>
           <Text style={s.eyebrow}>In your Cabinate</Text>
@@ -126,6 +125,7 @@ export function AccountScreen() {
           icon="link"
           onPress={() => router.push("/captures")}
         />
+        <Button title="Settings" secondary icon="settings" onPress={() => router.push("/settings")} />
         <Text style={s.muted}>
           Lists, cooking progress, receipts, and meal photos are saved on this
           device. Your pantry and cookbook are stored with Cabinate’s connected
