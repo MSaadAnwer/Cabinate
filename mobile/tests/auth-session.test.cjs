@@ -39,10 +39,14 @@ async function authHarness(sharedCredentials = false) {
     "react-native-safe-area-context": { SafeAreaView: "SafeAreaView" },
     "expo-auth-session": {
       makeRedirectUri: () => "cabinate://auth",
-      fetchDiscoveryAsync: async () => ({}),
+      fetchDiscoveryAsync: async (issuer) => {
+        assert.equal(issuer, "https://issuer.example.test");
+        return {};
+      },
       ResponseType: { Code: "code" },
       AuthRequest: class {
         codeVerifier = "proof";
+        async makeAuthUrlAsync() { return "https://issuer.example.test/authorize"; }
         async promptAsync() { return { type: "success", params: { code: "code" } }; }
       },
       exchangeCodeAsync: async () => next,
@@ -82,7 +86,8 @@ async function authHarness(sharedCredentials = false) {
     "../../../shared/deadline.ts": { withDeadline: (promise) => promise },
   };
   const { AuthProvider } = loadTypeScript(require.resolve("../src/state/auth.tsx"), modules, {
-    process: { env: { EXPO_PUBLIC_AUTH_ISSUER: "https://issuer.example.test", EXPO_PUBLIC_AUTH_CLIENT_ID: "client" } },
+    __DEV__: false,
+    process: { env: { EXPO_PUBLIC_AUTH_ISSUER: "https://issuer.example.test/", EXPO_PUBLIC_AUTH_CLIENT_ID: "client" } },
   });
   const render = () => { hookIndex = 0; return AuthProvider({ children: "account-content" }); };
   render();

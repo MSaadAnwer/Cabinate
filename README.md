@@ -14,6 +14,8 @@ Grocery lists, photos, and cooking progress are stored on the device under the v
 
 See [architecture](ARCHITECTURE.md), [roadmap](ROADMAP.md), [mobile setup](mobile/README.md), and the [latest code review](docs/code-review-2026-10-07.md).
 
+The [100-user cloud and sharing plan](docs/cloud-and-sharing-plan.md) covers low-cost hosting, local receipt-photo retention, durable synchronization, and future household/social access boundaries. It is a proposed implementation backlog, not deployed infrastructure.
+
 ## Local setup
 
 Requirements: Java 21, Node.js 22.20 or later, Docker Compose, and an iPhone for native testing from Windows.

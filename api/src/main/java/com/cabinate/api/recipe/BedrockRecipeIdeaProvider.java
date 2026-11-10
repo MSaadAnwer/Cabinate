@@ -148,8 +148,12 @@ public class BedrockRecipeIdeaProvider implements RecipeIdeaProvider {
             URI uri = URI.create("https://bedrock-runtime." + region + ".amazonaws.com/model/"
                     + URLEncoder.encode(model, StandardCharsets.UTF_8) + "/converse");
             Reply reply = transport.send(uri, token, mapper.writeValueAsString(body));
-            if (reply.status() != 200) throw new RecipeGenerationException(UNAVAILABLE,
-                    "The recipe service is unavailable. Please try again later.");
+            if (reply.status() != 200) {
+                // Record diagnostics without logging credentials or provider payloads.
+                log.warn("Bedrock recipe request failed: HTTP {}, region={}, model={}", reply.status(), region, model);
+                throw new RecipeGenerationException(UNAVAILABLE,
+                        "The recipe service is unavailable. Please try again later.");
+            }
             var response = mapper.readTree(reply.body());
             log.info("Recipe model completed: stopReason={}", response.path("stopReason").asText());
             if (!"tool_use".equals(response.path("stopReason").asText())) throw RecipeGenerationService.invalid();

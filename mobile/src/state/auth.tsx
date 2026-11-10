@@ -14,6 +14,8 @@ import { withDeadline } from "../../../shared/deadline.ts";
 
 WebBrowser.maybeCompleteAuthSession();
 const issuer = process.env.EXPO_PUBLIC_AUTH_ISSUER;
+// Expo appends '/.well-known/...'; avoid a double slash for issuers ending in '/'.
+const discoveryIssuer = issuer?.replace(/\/+$/, "");
 const clientId = process.env.EXPO_PUBLIC_AUTH_CLIENT_ID;
 const audience = process.env.EXPO_PUBLIC_AUTH_AUDIENCE;
 const scopes = (process.env.EXPO_PUBLIC_AUTH_SCOPES || "openid profile offline_access cabinate:read cabinate:write").split(/\s+/);
@@ -36,7 +38,7 @@ function persist(token: AuthSession.TokenResponse | null): Promise<void> {
   return write;
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children, onReady }: { children: ReactNode; onReady?: () => void }) {
   const token = useRef<AuthSession.TokenResponse | null>(null);
   const refresh = useRef<Promise<string | undefined> | null>(null);
   const generation = useRef(0);
@@ -47,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [busy, setBusy] = useState(false);
   const [configured, setConfigured] = useState(false);
   const [error, setError] = useState("");
+  useEffect(() => { if (!loading) onReady?.(); }, [loading, onReady]);
 
   const signOut = useCallback(async () => {
     generation.current++;
@@ -68,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refresh.current = (async () => {
         try {
           if (!issuer || !clientId || !current.refreshToken) throw new Error("Session expired");
-          const discovery = await withDeadline(AuthSession.fetchDiscoveryAsync(issuer));
+          const discovery = await withDeadline(AuthSession.fetchDiscoveryAsync(discoveryIssuer!));
           const next = await withDeadline(AuthSession.refreshAsync({ clientId, refreshToken: current.refreshToken }, discovery));
           if (signedInAccount.current) {
             const identity = await requestJson<{ accountId: string }>(`${apiConfig.baseUrl}/auth/me`,
@@ -151,26 +154,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setBusy(true);
     setError("");
     const ticket = ++generation.current;
+    let stage = "provider discovery";
     try {
-      const discovery = await withDeadline(AuthSession.fetchDiscoveryAsync(issuer));
+      const discovery = await withDeadline(AuthSession.fetchDiscoveryAsync(discoveryIssuer!));
+      stage = "preparing login";
       const request = new AuthSession.AuthRequest({ clientId, redirectUri, scopes, usePKCE: true,
         responseType: AuthSession.ResponseType.Code, extraParams: audience ? { audience } : {} });
+      // Prepare PKCE separately so pre-browser failures can be diagnosed safely.
+      await request.makeAuthUrlAsync(discovery);
+      stage = "opening login";
       const result = await request.promptAsync(discovery);
       if (result.type === "cancel" || result.type === "dismiss") return;
       if (result.type !== "success" || !result.params.code || !request.codeVerifier) throw new Error("Sign-in failed");
+      stage = "token exchange";
       const next = await withDeadline(AuthSession.exchangeCodeAsync({ clientId, redirectUri, code: result.params.code,
         extraParams: { code_verifier: request.codeVerifier } }, discovery));
       if (ticket !== generation.current) return;
       token.current = next;
+      stage = "account verification";
       await verify(false);
       if (ticket !== generation.current) return;
+      stage = "saving session";
       await persist(next);
-    } catch {
+    } catch (failure) {
       if (ticket === generation.current) {
         token.current = null;
         setIdentity(null);
         await persist(null).catch(() => {});
-        setError("Could not sign in. Please try again.");
+        // Never expose provider responses, codes, or tokens from later auth stages.
+        const beforeBrowser = stage === "provider discovery" || stage === "preparing login";
+        const detail = beforeBrowser && failure instanceof Error
+          ? failure.message.replace(/https?:\/\/\S+/g, "[URL]").slice(0, 250)
+          : "Please try again.";
+        setError(__DEV__ ? `Sign-in failed (${stage}): ${detail}` : "Could not sign in. Please try again.");
       }
     } finally { working.current = false; setBusy(false); }
   };

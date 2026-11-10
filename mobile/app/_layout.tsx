@@ -7,13 +7,22 @@ import { colors, IconButton } from "../src/components/ui";
 import { CookingTimerProvider } from "../src/state/cooking-timers";
 import { TimerTray } from "../src/components/cooking-timers";
 import { AuthProvider, useAuth } from "../src/state/auth";
+import { useCallback, useState } from "react";
+import * as SplashScreen from "expo-splash-screen";
+import { LaunchExperience } from "../src/components/launch-experience";
+
+void SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function Layout() {
+  const [ready, setReady] = useState(false);
+  const onReady = useCallback(() => setReady(true), []);
   return (
     <FeedbackProvider>
-      <AuthProvider>
-        <AccountKitchen />
-      </AuthProvider>
+      <LaunchExperience ready={ready}>
+        <AuthProvider onReady={onReady}>
+          <AccountKitchen />
+        </AuthProvider>
+      </LaunchExperience>
     </FeedbackProvider>
   );
 }

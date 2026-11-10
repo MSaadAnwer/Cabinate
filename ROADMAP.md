@@ -2,6 +2,18 @@
 
 **Mission:** Build and release Cabinate as an iOS-first Intelligent Pantry & Nutrition Architect.
 
+## Next delivery focus: first 100 users
+
+Follow the [cloud and sharing plan](docs/cloud-and-sharing-plan.md). Household and social features remain deferred; prepare their ownership boundaries while preserving current private workflows.
+
+- [ ] Deploy authenticated API and managed MongoDB with HTTPS, secrets, health checks, independent backups, and a verified restore.
+- [ ] Measure memory, storage, and latency with 100 synthetic accounts and 10 concurrent active clients; add persistent AI usage limits.
+- [ ] Add personal workspaces and membership authorization with an idempotent migration from current account ownership.
+- [ ] Move grocery lists to scoped cloud APIs; add item-level writes, local-data migration, cache/sync, and conflict handling.
+- [ ] Add local receipt-photo cleanup 30 days after confirmed import, preserving structured records and unfinished reviews.
+- [ ] Later: household invitations, roles, active-kitchen selection, and revocation handling.
+- [ ] Later: explicit social publishing, public profiles, moderation, and optional cloud media storage.
+
 ---
 
 ## Milestone 0: Local Environment & Scaffolding

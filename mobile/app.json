@@ -12,7 +12,8 @@
       "bundleIdentifier": "com.cabinate.app",
       "infoPlist": {
         "NSCameraUsageDescription": "Cabinate uses the camera for receipt and meal photos.",
-        "NSPhotoLibraryUsageDescription": "Cabinate lets you choose receipt and meal photos."
+        "NSPhotoLibraryUsageDescription": "Cabinate lets you choose receipt and meal photos.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -28,6 +29,12 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#173E2D"
+        }
+      ],
       "expo-router",
       "expo-notifications",
       [
@@ -41,6 +48,13 @@
       "@react-native-community/datetimepicker",
       "expo-secure-store",
       "expo-web-browser"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "298f22c4-2fee-4c67-bd09-9a3f247c8256"
+      }
+    },
+    "owner": "cabinate"
   }
 }
