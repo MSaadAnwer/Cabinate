@@ -32,6 +32,15 @@ function harness(pantry = []) {
     }) },
     "../services/photos": { capturePhoto: async () => "file:///meal.jpg" },
     "../utils/kitchen": { expiryLabel: () => "", localDate: (date) => date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}` : "2026-10-08", newId: () => "draft-photo" },
+  }, {
+    // Match the fixture's selected date without depending on the runner's month.
+    Date: class extends Date {
+      constructor(...args) {
+        if (args.length) super(...args);
+        else super(2026, 9, 8, 12);
+      }
+      static now() { return new Date(2026, 9, 8, 12).getTime(); }
+    },
   });
   function find(tree, type, match) {
     if (!tree || typeof tree !== "object") return;
